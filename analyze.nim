@@ -8,7 +8,7 @@ from facilities import Facilities
 from vehicles import Vehicles
 from tables import Table
 
-const flyers = {1,2}
+const flyers* = {1,2}
 const typenames = [
   "arrv",
   "fighter",
@@ -27,11 +27,9 @@ type
     facilities: Facilities
     game: Game
     world: World
-    freeGroups: set[Group]
     effectiveness: array[5, array[5, float]]
 
 proc initWorldState*(w: World, g: Game, p: Player): WorldState
-proc getFreeGroup*(self: var WorldState): Group
 proc update*(self: var WorldState, w: World)
 proc genGameField(game: NimNode, field: string, i, j: int): NimNode
   {.compileTime.}
@@ -71,8 +69,6 @@ proc initWorldState(w: World, g: Game, p: Player): WorldState =
   result.world = w
   result.vehicles = initVehicles(w, g, p)
   result.facilities = initFacilities(w, p)
-  for i in Group(1)..g.maxUnitGroup.Group:
-    result.freeGroups.incl(i)
   genEffectiveness(g, result.effectiveness)
 
 proc update(self: var WorldState, w: World) =
@@ -80,9 +76,3 @@ proc update(self: var WorldState, w: World) =
   self.vehicles.update(w, me)
   self.facilities.update(w, me)
   self.world = w
-
-proc getFreeGroup(self: var WorldState): Group =
-  for g in self.freeGroups:
-    result = g
-    break
-  self.freeGroups.excl(result)

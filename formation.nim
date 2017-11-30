@@ -1,5 +1,6 @@
 from behavior import Behavior
 from selection import Selection
+from vehicles import Vehicles
 from analyze import WorldState
 from model.move import Move
 
@@ -11,17 +12,22 @@ type
 
 proc newGroundFormation*(sel: Selection): Formation
 proc tick*(self: var Formation, ws: WorldState, m: var Move)
+proc empty*(self: Formation, vehicles: Vehicles): bool
 
 from together_behavior import initTogetherBehavior
 from behavior import BehaviorStatus
 from selection import select, SelectionStatus
 from model.action_type import ActionType
+from tables import `[]`
 
 proc newGroundFormation(sel: Selection): Formation =
   result.selection = sel
   result.behaviors = @[
     initTogetherBehavior(sel),
   ]
+
+proc empty(self: Formation, vehicles: Vehicles): bool =
+  card(vehicles.byGroup[self.selection.group]) > 0
 
 proc tick(self: var Formation, ws: WorldState, m: var Move) =
   var resetFlag = false

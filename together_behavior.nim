@@ -7,7 +7,7 @@ from analyze import WorldState
 
 proc initTogetherBehavior*(holder: Selection): Behavior
 
-from analyze import resolve, toGroup
+from vehicles import resolve, toGroup
 from borders import obtainCenter, obtainBorders, area
 from math import PI
 from tables import `[]`

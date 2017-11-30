@@ -14,11 +14,12 @@ type MyStrategy* = object
 
 proc initMyStrategy*(): MyStrategy =
   # put your initialization code here
-  result.scheduler = initScheduler()
+  discard
 
 proc move*(self: var MyStrategy, player: Player, world: World, game: Game,
            move: var Move) =
   if world.tick_index == 0:
+    self.scheduler = initScheduler(game)
     self.worldState = initWorldState(world, game, player)
     move.action = ActionType.CLEAR_AND_SELECT
     move.right = world.width
