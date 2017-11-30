@@ -5,15 +5,15 @@ from model.move import Move
 
 type
   ActionStatus* {.pure.} = enum
-    skip
     take
+    skip
     next
   Action* =
     proc(ws: WorldState, gc: var GroupCounter, m: var Move): ActionStatus
 
-proc move*(shift: Point, maxspeed: float64): Action
-proc scale*(center: Point, factor,maxspeed: float64): Action
-proc rotate*(center: Point, angle, maxspeed: float64): Action
+proc actmove*(shift: Point, maxspeed: float64 = 0): Action
+proc scale*(center: Point, factor, maxspeed: float64 = 0): Action
+proc rotate*(center: Point, angle, maxspeed: float64 = 0): Action
 
 from model.action_type import ActionType
 from model.vehicle_type import VehicleType
@@ -39,6 +39,7 @@ macro genSelectsNGroups(): untyped =
         proc innerproc(ws: WorldState, gc: var GroupCounter, m: var Move): ActionStatus =
           m.action = `action`.ActionType
           m.group = group.int32
+          ActionStatus.take
         innerproc
     if i > 2: continue
     result.add quote do:
@@ -50,14 +51,34 @@ macro genSelectsNGroups(): untyped =
           m.right = area.right
           m.top = area.top
           m.bottom = area.bottom
+          ActionStatus.take
         innerproc
 
 genSelectsNGroups()
 
-# TODO!
-proc move(shift: Point, maxspeed: float64): Action =
-  discard
-proc scale(center: Point, factor,maxspeed: float64): Action =
-  discard
-proc rotate(center: Point, angle, maxspeed: float64): Action =
-  discard
+proc actmove(shift: Point, maxspeed: float64 = 0): Action =
+  proc i_move(ws: WorldState, gc: var GroupCounter, m: var Move): ActionStatus =
+    m.action = ActionType.MOVE
+    m.x = shift.x
+    m.y = shift.y
+    m.maxspeed = maxspeed
+    ActionStatus.take
+  return imove
+proc scale(center: Point, factor, maxspeed: float64 = 0): Action =
+  proc inner(ws: WorldState, gc: var GroupCounter, m: var Move): ActionStatus =
+    m.action = ActionType.SCALE
+    m.x = center.x
+    m.y = center.y
+    m.factor = factor
+    m.maxspeed = maxspeed
+    ActionStatus.take
+  return inner
+proc rotate(center: Point, angle, maxspeed: float64 = 0): Action =
+  proc inner(ws: WorldState, gc: var GroupCounter, m: var Move): ActionStatus =
+    m.action = ActionType.ROTATE
+    m.x = center.x
+    m.y = center.y
+    m.angle = angle
+    m.maxAngularSpeed = maxspeed
+    ActionStatus.take
+  return inner

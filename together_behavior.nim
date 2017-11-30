@@ -27,14 +27,16 @@ proc initTogetherBehavior(holder: Selection): Behavior =
   result.tick = proc(ws: WorldState): BehaviorStatus =
     const criticalDensity = 1/16
     let units = ws.vehicles.resolve(holder.group)
+    if units.len() == 0:
+      return BehaviorStatus.inactive
     center = obtainCenter(units)
     let area = area(obtainBorders(center, units))
     let density = units.len().toFloat() / area
     if density < criticaldensity:
-      BehaviorStatus.act
+      return BehaviorStatus.act
     else:
       reset()
-      BehaviorStatus.inactive
+      return BehaviorStatus.inactive
   result.action = proc(ws: WorldState, m: var Move) =
     const maxcount = 50
     if lastAction != ActionType.SCALE:

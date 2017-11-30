@@ -27,8 +27,10 @@ type
 proc initVehicles*(w: World, g: Game, p: Player): Vehicles
 proc update*(self: var Vehicles, w: World, myid: int64)
 proc resolve*(self: Vehicles, conds: Conv): seq[EVehicle]
+proc resolve*(self: Vehicles, ids: set[VehicleId]): seq[EVehicle]
 proc inArea*(self: Vehicles, area: Area): set[VehicleId]
 converter toType*(a: VehicleType): Conv
+converter toArea*(a: Area): Conv
 converter toGroup*(a: Group): Conv
 converter toHealth*(a: HealthLevel): Conv
 proc `*`*(a, b: Conv): Conv
@@ -41,8 +43,12 @@ from enhanced import fromVehicle
 
 converter toType(a: VehicleType): Conv =
   result = proc (self: Vehicles): set[VehicleId] = self.byType[a]
+converter toArea(a: Area): Conv =
+  result = proc (self: Vehicles): set[VehicleId] = self.inArea(a)
 converter toGroup(a: Group): Conv =
-  result = proc (self: Vehicles): set[VehicleId] = self.byGroup[a]
+  result = proc (self: Vehicles): set[VehicleId] =
+    if a in self.byGroup: self.byGroup[a]
+    else: {}
 converter toHealth(a: HealthLevel): Conv =
   result = proc (self: Vehicles): set[VehicleId] = self.byHealth[a]
 proc `*`(a, b: Conv): Conv =
@@ -53,9 +59,11 @@ proc `-`(a, b: Conv): Conv =
   result = proc (self: Vehicles): set[VehicleId] = a(self) - b(self)
 proc resolve(self: Vehicles, conds: Conv): seq[EVehicle] =
   let c = conds(self)
-  result = newSeq[EVehicle](c.card)
+  self.resolve(c)
+proc resolve(self: Vehicles, ids: set[VehicleId]): seq[EVehicle] =
+  result = newSeq[EVehicle](ids.card)
   var i = 0
-  for id in c:
+  for id in ids:
     result[i] = self.byId[id]
     inc(i)
 
@@ -63,6 +71,8 @@ proc initVehicles(w: World, g: Game, p: Player): Vehicles =
   result.byId =
     initTable[VehicleId, EVehicle](w.newVehicles.len.nextPowerOfTwo)
   result.byType = initTable[VehicleType, set[VehicleId]](8)
+  for i in VehicleType.ARRV..VehicleType.TANK:
+    result.byType[i] = {}
   result.byGroup =
     initTable[Group, set[VehicleId]](g.maxUnitGroup.nextPowerOfTwo())
   result.update(w, p.id)
@@ -72,7 +82,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
     let vehicle = fromVehicle(v)
     let id = vehicle.sid
     self.byId[id] = vehicle
-    self.byType.mgetOrPut(v.thetype, {}).incl(id)
+    self.byType[v.thetype].incl(id)
     self.byHealth[HealthLevel.high()].incl(id)
     if v.aerial:
       self.aerials.incl(id)
@@ -116,7 +126,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
         newgroups.incl(g.Group)
       let oldgroups = unit.groups
       for g in (newgroups - oldgroups).items():
-        self.byGroup[g].incl(id)
+        self.byGroup.mgetOrPut(g, {}).incl(id)
       for g in (oldgroups - newgroups).items():
         self.byGroup[g].excl(id)
       self.byId[id].groups = newgroups

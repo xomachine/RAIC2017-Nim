@@ -23,11 +23,13 @@ proc initFacilities(w: World, p: Player): Facilities =
   result.byId =
     initTable[FacilityId, Facility](w.facilities.len.nextPowerOfTwo)
   result.byType = initTable[FacilityType, set[FacilityId]](2)
+  for i in [FacilityType.CONTROL_CENTER, FacilityType.VEHICLE_FACTORY]:
+    result.byType[i] = {}
   for f in w.facilities:
     let id = f.id.FacilityId
     result.byId[id] = f
     result.all.incl(id)
-    result.byType.mgetOrPut(f.thetype, {}).incl(id)
+    result.byType[f.thetype].incl(id)
     if f.ownerPlayerId == -1:
       result.neutral.incl(id)
     elif f.ownerPlayerId == p.id:

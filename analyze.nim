@@ -76,3 +76,5 @@ proc update(self: var WorldState, w: World) =
   self.vehicles.update(w, me)
   self.facilities.update(w, me)
   self.world = w
+  self.players[Players.enemy] = w.players[int(w.players[0].me)]
+  self.players[Players.me] = w.players[int(w.players[1].me)]

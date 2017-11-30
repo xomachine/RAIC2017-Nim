@@ -16,7 +16,6 @@ const maxTicksWithoutCtxSwitch = 50
 type
   Scheduler* = tuple
     ctxSwitchTimer: Natural
-    actionsRemaining: Natural
     pool: DoublyLinkedList[Formation]
     playerBehaviors: DoublyLinkedList[PlayerBehavior]
     groupCounter: GroupCounter
@@ -24,35 +23,41 @@ type
 proc initScheduler*(game: Game): Scheduler
 proc tick*(self: var Scheduler, ws: WorldState, m: var Move)
 
+from analyze import Players
 from groupcounter import initGroupCounter
 from enhanced import Group
 from pbehavior import PBRType
+from production import initProduction
+from pbinitial import initInitial
 from formation import empty
 from model.facility_type import FacilityType
+from model.vehicle_type import VehicleType
 from lists import initDoublyLinkedList, nodes, remove, prepend, append
 from tables import `[]`
-from deques import len
+from utils import debug
 
 proc initScheduler(game: Game): Scheduler =
   result.pool = initDoublyLinkedList[Formation]()
   result.playerBehaviors = initDoublyLinkedList[PlayerBehavior]()
+  result.playerBehaviors.append(
+    initInitial(@[VehicleType.ARRV, VehicleType.IFV, VehicleType.TANK]))
+  result.playerBehaviors.append(
+    initInitial(@[VehicleType.FIGHTER, VehicleType.HELICOPTER]))
+  result.playerBehaviors.append(initProduction())
   result.groupCounter = initGroupCounter(game.maxUnitGroup.Group)
 
 proc tick(self: var Scheduler, ws: WorldState, m: var Move) =
-  if ws.world.tickIndex mod 60 == 0:
-    self.actionsRemaining =
-      ws.game.baseActionCount + ws.game.additionalActionCountPerControlCenter *
-      card(ws.facilities.mine *
-           ws.facilities.byType[FacilityType.CONTROL_CENTER])
-  if self.actionsRemaining > 0:
+  if ws.players[Players.me].remainingActionCooldownTicks == 0:
+    var index = 0
     for pbn in self.playerBehaviors.nodes():
       let status = pbn.value.tick(ws, self.groupCounter, m)
       case status.kind
       of PBRType.removeMe:
         self.playerBehaviors.remove(pbn)
       of PBRType.priority:
-        self.playerBehaviors.remove(pbn)
-        self.playerBehaviors.prepend(pbn)
+        if index != 0:
+          self.playerBehaviors.remove(pbn)
+          self.playerBehaviors.prepend(pbn)
       of PBRType.addPBehavior:
         self.playerBehaviors.append(status.behavior)
       of PBRType.addFormation:
@@ -60,6 +65,7 @@ proc tick(self: var Scheduler, ws: WorldState, m: var Move) =
       else: discard
       if m.action != ActionType.NONE:
         return
+      inc(index)
     var position = 0
     for acn in self.pool.nodes:
       if acn.value.empty(ws.vehicles):
@@ -78,4 +84,4 @@ proc tick(self: var Scheduler, ws: WorldState, m: var Move) =
           self.pool.remove(acn)
           self.pool.prepend(acn)
         break
-      inc(position)
+      position += 1

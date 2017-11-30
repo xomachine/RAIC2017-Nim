@@ -11,6 +11,7 @@ type
     pendingSelection: bool
 
 proc newGroundFormation*(sel: Selection): Formation
+proc newAerialFormation*(sel: Selection): Formation
 proc tick*(self: var Formation, ws: WorldState, m: var Move)
 proc empty*(self: Formation, vehicles: Vehicles): bool
 
@@ -18,16 +19,24 @@ from together_behavior import initTogetherBehavior
 from behavior import BehaviorStatus
 from selection import select, SelectionStatus
 from model.action_type import ActionType
-from tables import `[]`
+from tables import `[]`, contains
 
 proc newGroundFormation(sel: Selection): Formation =
   result.selection = sel
   result.behaviors = @[
     initTogetherBehavior(sel),
   ]
+proc newAerialFormation(sel: Selection): Formation =
+  result.selection = sel
+  result.behaviors = @[
+    initTogetherBehavior(sel)
+  ]
 
 proc empty(self: Formation, vehicles: Vehicles): bool =
-  card(vehicles.byGroup[self.selection.group]) > 0
+  if self.selection.counter == self.selection.steps.len():
+    not (self.selection.group in vehicles.byGroup) or
+      card(vehicles.byGroup[self.selection.group]) == 0
+  else: false
 
 proc tick(self: var Formation, ws: WorldState, m: var Move) =
   var resetFlag = false

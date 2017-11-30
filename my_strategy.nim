@@ -21,11 +21,11 @@ proc move*(self: var MyStrategy, player: Player, world: World, game: Game,
   if world.tick_index == 0:
     self.scheduler = initScheduler(game)
     self.worldState = initWorldState(world, game, player)
-    move.action = ActionType.CLEAR_AND_SELECT
-    move.right = world.width
-    move.bottom = world.height
   self.worldState.update(world)
-  if world.tickIndex == 1:
-    move.action = ActionType.MOVE
-    move.x = world.width/2
-    move.y = world.height/2
+  self.scheduler.tick(self.worldState, move)
+  if move.action != ActionType.NONE:
+    echo "Tick: ", world.tickIndex
+    echo "Cooldown: ", player.remainingActionCooldownTicks
+    echo move.action
+    echo move.x, " ", move.y
+    echo move.top, " ",  move.bottom

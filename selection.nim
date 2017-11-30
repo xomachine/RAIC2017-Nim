@@ -1,44 +1,30 @@
 from model.move import Move
-from model.vehicle_type import VehicleType
-from model.action_type import ActionType
+from actions import Action
 from enhanced import Group
-from analyze import WorldState, getFreeGroup
-from utils import Area
+from analyze import WorldState
 
 type
   SelectionStatus* {.pure.} = enum
     alreadyDone
     done
     needMoreTicks
-  Step* = object
-    act: ActionType
-    area: Area
-    vtype: VehicleType
-    group: Group
   Selection* = tuple
     group: Group
-    steps: seq[Step]
+    steps: seq[Action]
     counter: Natural
 
-proc initSelection*(ws: var WorldState, steps: seq[Step]): Selection
+proc initSelection*(group: Group, steps: seq[Action]): Selection
 proc select*(self: var Selection, ws: WorldState, m: var Move): SelectionStatus
-proc make(s: Step, m: var Move)
 
 from tables import `[]`
+from groupcounter import GroupCounter
+from actions import ActionStatus, group
+from model.action_type import ActionType
 
-proc make(s: Step, m: var Move) =
-  m.action = s.act
-  m.left = s.area.left
-  m.right = s.area.right
-  m.top = s.area.top
-  m.bottom = s.area.bottom
-  m.vehicleType = s.vtype
-  m.group = s.group.int32
-
-proc initSelection(ws: var WorldState, steps: seq[Step]): Selection =
-  result.group = ws.getFreeGroup()
+proc initSelection(group: Group, steps: seq[Action]): Selection =
+  result.group = group
   result.counter = 0
-  result.steps = steps & Step(act: ActionType.ASSIGN, group: result.group)
+  result.steps = steps & group(result.group)
 
 proc isSelected(self: Selection, ws: WorldState): bool =
   card(ws.vehicles.byGroup[self.group] *
@@ -51,6 +37,9 @@ proc select(self: var Selection, ws: WorldState, m: var Move): SelectionStatus =
     m.group = self.group.int32
     SelectionStatus.done
   else:
-    self.steps[self.counter].make(m)
+    var gc: GroupCounter
+    let status = self.steps[self.counter](ws, gc, m)
     inc(self.counter)
+    if status == ActionStatus.next and m.action == ActionType.NONE:
+      return self.select(ws, m)
     SelectionStatus.needMoreTicks

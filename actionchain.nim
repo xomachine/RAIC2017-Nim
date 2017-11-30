@@ -14,6 +14,7 @@ proc initActionChain*(actions: ActionChain): PlayerBehavior
 from model.action_type import ActionType
 from pbehavior import PBResult, PBRType
 from actions import ActionStatus
+from utils import debug
 
 proc initActionChain(actions: ActionChain): PlayerBehavior =
   var counter = 0
@@ -21,13 +22,14 @@ proc initActionChain(actions: ActionChain): PlayerBehavior =
     proc (ws: WorldState, gc: var GroupCounter, m: var Move): PBResult =
       while counter < actions.len():
         let status = actions[counter](ws, gc, m)
+        debug("Action " & $counter & " returned " & $status)
         case status
         of ActionStatus.skip:
           return PBResult(kind: PBRType.empty)
         of ActionStatus.take:
-          inc(counter)
+          counter += 1
           return PBResult(kind: PBRType.priority)
         of ActionStatus.next:
-          inc(counter)
+          counter += 1
       return PBResult(kind: PBRType.removeMe)
 
