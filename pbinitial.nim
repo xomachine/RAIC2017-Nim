@@ -9,8 +9,8 @@ from actions import Action, newSelection, actmove, group, ungroup, ActionStatus
 from actionchain import initActionChain, ActionChain
 from analyze import WorldState, flyers
 from condactions import atMoveEnd
-from formation import newGroundFormation, newAerialFormation
-from enhanced import VehicleId
+from formation import newGroundFormation, newAerialFormation, Formation
+from enhanced import VehicleId, Group
 from groupcounter import GroupCounter, getFreeGroup
 from pbehavior import PBResult, PBRType
 from selection import initSelection
@@ -20,8 +20,6 @@ from utils import Area, Point, areaFromUnits, debug
 const hi = 18.0
 const lo = 220.0
 const spawnArea: Area = (left: hi, right: lo, top: hi, bottom: lo)
-const areaCenter: Point = (x: (spawnArea.left + spawnArea.right)/2,
-                       y: (spawnArea.top + spawnArea.bottom)/2)
 const linewidth = (lo - hi) / 3
 const alines = [
   (left: hi, right: lo, top: hi, bottom: hi + linewidth),
@@ -57,6 +55,7 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
   var actionChains = newSeq[ActionChain]()
   var stages: array[10, tuple[expected: int, done: int]]
   var stagecounter = 0
+  var formations = newSeq[Formation]()
   proc stagedone(stage: int): bool =
     if stage != stagecounter: false
     else:
@@ -71,7 +70,6 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
       stages[stage].done += 1
       ActionStatus.next
     return inn
-  var freeCols = {0'u8, 1'u8, 2'u8}
   var squadWidth = -1.0
   var colstarts = [0.0, 0.0, 0.0]
   result.tick = proc(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult=
@@ -81,39 +79,65 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
       squadWidth = squad.right - squad.left
       colstarts = [hi, (hi + lo - squadWidth)/2, lo - squadWidth]
     if ws.world.tickIndex == 0:
+      # Placing squads one per column
       let nonmovables = v.byType[VehicleType.TANK] +
                         v.byType[VehicleType.HELICOPTER]
-      var additionals = [0, 0, 0]
+      var perline: array[3, set[VehicleId]]
+      var percol: array[3, set[VehicleId]]
+      var freeCols: set[uint8]
+      var overquotted: uint8
+      var overquottedLen = 0
+      var toi: set[VehicleId]
+      for t in types:
+        toi = toi + v.byType[t]
+      for l in 0'u8..2'u8:
+        perline[l] = v.inArea(alines[l]) * toi
       for c in 0'u8..2'u8:
-        let sumincol = v.inArea(acols[c])
-        var intypes: set[VehicleId]
-        for t in types:
-          intypes = intypes + v.byType[t]
-        var incol = sumincol * intypes
-        var iclen = additionals[c] + (card(incol) div 100)
-        debug("Iclen for col " & $c & " = " & $iclen)
-        if iclen > 0:
-          freeCols.excl(c)
-        while iclen > 1:
-          let targetcol = freeCols.pop()
-          let shift = (x: colstarts[targetcol] - colstarts[c], y: 0.0)
-          inc(additionals[targetcol])
-          let prshifttarget = incol - nonmovables
-          let prstlen = card(prshifttarget)
-          let shifttarget =
-            if prstlen > 100: prshifttarget - v.byType[VehicleType.IFV]
-            elif prstlen == 0: incol
-            else: prshifttarget
-          let starea = areaFromUnits(v.resolve(shifttarget))
-          debug("Moving " & $starea & " to " & $targetcol & " via shift = " & $shift)
-          actionChains.add(@[
-            newSelection(starea),
-            actmove(shift),
-            atMoveEnd(shifttarget),
-            done(0)
-          ])
-          dec(iclen)
+        percol[c] = v.inArea(acols[c]) * toi
+        let size = card(percol[c]) div 100
+        if size == 0:
+          freeCols.incl(c)
+        elif size > 1:
+          overquotted = c
+          overquottedLen = size
+      var shifted: set[VehicleId]
+      debug($freeCols)
+      debug("Overquotted col: " & $overquotted & " has len " & $overquottedLen)
+      while overquottedLen > 1:
+        let targetcol = freeCols.pop()
+        let toshift = percol[overquotted] - (nonmovables + shifted)
+        let realtoshift =
+          if card(toshift) > 100: toshift - v.byType[VehicleType.IFV]
+          else: toshift
+        shifted = shifted + realtoshift
+        let tsarea = areaFromUnits(v.resolve(realtoshift))
+        var shift = (x: colstarts[targetcol]-colstarts[overquotted], y: 0.0)
+        if overquotted != 1 and targetcol != 1:
+          var shiftline = -1
+          for l in 0'u8..2:
+            if card(perline[l] * realtoshift) > 0:
+              shiftline = l
+              break
+          let obstacle = percol[1] * perline[shiftline]
+          if card(obstacle) > 0:
+            let obstaclearea = areaFromUnits(v.resolve(obstacle))
+            let oshift = (x: colstarts[targetcol]-colstarts[1], y: 0.0)
+            actionChains.add(@[
+              newSelection(obstaclearea),
+              actmove(oshift),
+              atMoveEnd(obstacle),
+              done(0)
+            ])
+            shift = (x: colstarts[1]-colstarts[overquotted], y: 0.0)
+        actionChains.add(@[
+          newSelection(tsarea),
+          actmove(shift),
+          atMoveEnd(realtoshift),
+          done(0)
+        ])
+        overquottedLen -= 1
     elif stagedone(0):
+      # Spreading each squad vertically
       debug("Stage 0 done!")
       for t in types:
         debug("Processing " & $t)
@@ -140,6 +164,7 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
                            done(1)
                          ])
     elif stagedone(1):
+      # Moving each squad to central column
       debug("Stage 1 done!")
       for t in types:
         let vehs = v.byType[t] * v.mine
@@ -152,19 +177,28 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
           done(2)
         ])
     elif stagedone(2):
+      # Dividing resulting squad by 2 and making formation for each part
       debug("Stage 2 done!")
       let aarea = areaFromUnits(v.resolve(v.mine))
-      let ngroup = gc.getFreeGroup()
-      let selection = initSelection(ngroup, @[
-        newSelection(aarea)
-      ])
-      let theformation =
-        if types[0].ord in flyers: newAerialFormation(selection)
-        else: newGroundFormation(selection)
-      return PBResult(kind: PBRType.addFormation, formation: theformation)
-    elif stagedone(3):
+      var groups: array[2, Group]
+      # to avoid illegal capture of gc
+      for i in 0..<2:
+        groups[i] = gc.getFreeGroup()
+      proc every(i: int, pa: Area): ActionChain =
+        let ngroup = groups[i]
+        let selection = initSelection(ngroup, @[newSelection(aarea)])
+        let theformation =
+          if types[0].ord in flyers: newAerialFormation(selection)
+          else: newGroundFormation(selection)
+        formations.add(theformation)
+        @[]
+      discard devide(aarea, 2, every)
+    elif stagedone(3) and formations.len() == 0:
+      # All formations are created, so removing ourselves
       debug("Stage 3 done!")
       return PBResult(kind: PBRType.removeMe)
     if actionChains.len() > 0:
       return PBResult(kind: PBRType.addPBehavior,
                       behavior: initActionChain(actionChains.pop()))
+    if formations.len() > 0:
+      return PBResult(kind: PBRType.addFormation, formation: formations.pop())
