@@ -10,7 +10,7 @@ from clusterization import clusterize
 from enhanced import EVehicle
 from vehicles import resolve, toGroup
 from utils import Point, getSqDistance, debug
-from sets import `-`
+from fastset import `-`
 from model.vehicle_type import VehicleType
 from model.move import Move
 from model.game import Game

@@ -12,9 +12,9 @@ type
     priority
   PBResult* = object
     case kind*: PBRType
-    of addFormation:
+    of PBRType.addFormation:
       formation*: Formation
-    of addPBehavior:
+    of PBRType.addPBehavior:
       behavior*: PlayerBehavior
     else: discard
   PlayerBehavior* = tuple

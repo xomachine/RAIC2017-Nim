@@ -23,7 +23,7 @@ from nuke import initNuke
 from selection import select, SelectionStatus
 from model.action_type import ActionType
 from tables import `[]`, contains
-from sets import card
+from fastset import empty
 
 proc newGroundFormation(sel: Selection): Formation =
   result.selection = sel
@@ -45,7 +45,7 @@ proc newAerialFormation(sel: Selection): Formation =
 proc empty(self: Formation, vehicles: Vehicles): bool =
   if self.selection.counter == self.selection.steps.len():
     not (self.selection.group in vehicles.byGroup) or
-      card(vehicles.byGroup[self.selection.group]) == 0
+      vehicles.byGroup[self.selection.group].empty
   else: false
 
 proc actOrSelect(self: var Formation, b: Behavior, ws: WorldState, m: var Move): bool =

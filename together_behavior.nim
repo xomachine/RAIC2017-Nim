@@ -12,7 +12,7 @@ from borders import obtainCenter, obtainBorders, area
 from utils import debug
 from math import PI
 from tables import `[]`
-from sets import `*`, card
+from fastset import `*`, card
 
 proc initTogetherBehavior(holder: Selection): Behavior =
   # fields (perfecly incapsulated!)

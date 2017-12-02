@@ -15,7 +15,7 @@ from model.vehicle_type import VehicleType
 from model.facility_type import FacilityType
 from utils import Area
 from tables import `[]`
-from sets import `*`, card, `-`
+from fastset import `*`, card, `-`, empty
 
 var vehiclesPerLine: int = 0
 var vehiclesPerCol: int = 0
@@ -45,9 +45,8 @@ proc initProduction(): PlayerBehavior =
                          bottom: facility.top + ws.game.facilityHeight)
       let in_facility = ws.vehicles.inArea(farea)
       let mine_in_facility = in_facility * ws.vehicles.mine
-      let miflen = card(mine_in_facility)
       let producted = card(in_facility * ungrouped)
-      if miflen == 0 and facility.vehicleType == VehicleType.UNKNOWN:
+      if mine_in_facility.empty() and facility.vehicleType == VehicleType.UNKNOWN:
         # initial setup production
         m.action = ActionType.SETUP_VEHICLE_PRODUCTION
         m.facilityId = fid.int64

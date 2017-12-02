@@ -4,7 +4,7 @@ from model.vehicle_type import VehicleType
 proc initInitial*(types: seq[VehicleType]): PlayerBehavior
 
 from tables import `[]`
-from sets import `*`, card, `+`, `-`, init, HashSet
+from fastset import `*`, card, `+`, `-`, clear, FastSet, empty
 from model.move import Move
 from actions import Action, newSelection, actmove, group, ungroup, ActionStatus,
                     addToSelection
@@ -84,30 +84,30 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
       # Placing squads one per column
       let nonmovables = v.byType[VehicleType.TANK] +
                         v.byType[VehicleType.HELICOPTER]
-      var perline: array[3, HashSet[VehicleId]]
-      var percol: array[3, HashSet[VehicleId]]
+      var perline: array[3, FastSet[VehicleId]]
+      var percol: array[3, FastSet[VehicleId]]
       var freeCols: set[uint8]
       var overquotted: uint8
       var overquottedLen = 0
-      var toi: HashSet[VehicleId]
-      toi.init()
+      var toi: FastSet[VehicleId]
+      #toi.init()
       for t in types:
         toi = toi + v.byType[t]
       for l in 0'u8..2'u8:
         perline[l] = v.inArea(alines[l]) * toi
       for c in 0'u8..2'u8:
         percol[c] = v.inArea(acols[c]) * toi
-        let size = card(percol[c]) div 100
+        let size = card(percol[c])
         if size == 0:
           freeCols.incl(c)
-        elif size > 1:
+        elif size > 100:
           overquotted = c
           overquottedLen = size
-      var shifted: HashSet[VehicleId]
-      shifted.init()
+      var shifted: FastSet[VehicleId]
+      #shifted.init()
       debug($freeCols)
       debug("Overquotted col: " & $overquotted & " has len " & $overquottedLen)
-      while overquottedLen > 1:
+      while overquottedLen > 100:
         let targetcol = freeCols.pop()
         let toshift = percol[overquotted] - (nonmovables + shifted)
         let realtoshift =
@@ -119,11 +119,11 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
         if overquotted != 1 and targetcol != 1:
           var shiftline = -1
           for l in 0'u8..2:
-            if card(perline[l] * realtoshift) > 0:
+            if not (perline[l] * realtoshift).empty:
               shiftline = l
               break
           let obstacle = percol[1] * perline[shiftline]
-          if card(obstacle) > 0:
+          if not obstacle.empty:
             let obstaclearea = areaFromUnits(v.resolve(obstacle))
             let oshift = (x: colstarts[targetcol]-colstarts[1], y: 0.0)
             actionChains.add(@[
@@ -139,7 +139,7 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
           atMoveEnd(realtoshift),
           done(0)
         ])
-        overquottedLen -= 1
+        overquottedLen -= 100
     elif stagedone(0):
       # Spreading each squad vertically
       debug("Stage 0 done!")
