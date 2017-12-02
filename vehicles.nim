@@ -8,6 +8,8 @@ from enhanced import VehicleId, EVehicle, Group
 from utils import Area
 from sets import HashSet
 
+const gridsize* = 16
+const maxsize* = (1024 div gridsize) + 1
 const maxHealthRange = 4
 
 type
@@ -19,6 +21,7 @@ type
     byType: Table[VehicleType, HashSet[VehicleId]]
     byId: Table[VehicleId, EVehicle]
     byGroup: Table[Group, HashSet[VehicleId]]
+    byGrid: array[maxsize, array[maxsize, HashSet[VehicleId]]]
     byHealth: array[HealthLevel, HashSet[VehicleId]]
     all: HashSet[VehicleId]
     selected: HashSet[VehicleId]
@@ -76,6 +79,9 @@ proc initVehicles(w: World, g: Game, p: Player): Vehicles =
   result.selected.init()
   result.mine.init()
   result.aerials.init()
+  for x in 0..<maxsize:
+    for y in 0..<maxsize:
+      result.byGrid[x][y].init()
   result.byType = initTable[VehicleType, HashSet[VehicleId]](8)
   for i in VehicleType.ARRV..VehicleType.TANK:
     result.byType[i] = initSet[VehicleId]()
@@ -131,8 +137,13 @@ proc update(self: var Vehicles, w: World, myid: int64) =
         self.updated.incl(id)
         self.byId[id].x = vu.x
         self.byId[id].y = vu.y
-        self.byId[id].gridx = vu.x.int div gridsize
-        self.byId[id].gridy = vu.y.int div gridsize
+        let gridx = vu.x.int div gridsize
+        let gridy = vu.y.int div gridsize
+        if unit.gridx != gridx or unit.gridy != gridy:
+          self.byGrid[unit.gridx][unit.gridy].excl(id)
+          self.byGrid[gridx][gridy].incl(id)
+          self.byId[id].gridx = gridx
+          self.byId[id].gridy = gridy
       var newgroups: set[uint8]
       for g in vu.groups:
         newgroups.incl(g.Group)
