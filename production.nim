@@ -15,6 +15,7 @@ from model.vehicle_type import VehicleType
 from model.facility_type import FacilityType
 from utils import Area
 from tables import `[]`
+from sets import `*`, card, `-`
 
 var vehiclesPerLine: int = 0
 var vehiclesPerCol: int = 0

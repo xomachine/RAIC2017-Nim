@@ -25,7 +25,6 @@ proc move*(self: var MyStrategy, player: Player, world: World, game: Game,
   self.scheduler.tick(self.worldState, move)
   if move.action != ActionType.NONE:
     echo "Tick: ", world.tickIndex
-    echo "Cooldown: ", player.remainingActionCooldownTicks
     echo move.action
     echo move.x, " ", move.y
     echo move.top, " ",  move.bottom

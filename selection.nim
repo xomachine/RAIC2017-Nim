@@ -16,7 +16,8 @@ type
 proc initSelection*(group: Group, steps: seq[Action]): Selection
 proc select*(self: var Selection, ws: WorldState, m: var Move): SelectionStatus
 
-from tables import `[]`
+from tables import `[]`, contains
+from sets import `*`, card
 from groupcounter import GroupCounter
 from actions import ActionStatus, group
 from model.action_type import ActionType
@@ -27,8 +28,10 @@ proc initSelection(group: Group, steps: seq[Action]): Selection =
   result.steps = steps & group(result.group)
 
 proc isSelected(self: Selection, ws: WorldState): bool =
-  card(ws.vehicles.byGroup[self.group] *
-       ws.vehicles.selected) == card(ws.vehicles.byGroup[self.group])
+  if self.group in ws.vehicles.byGroup:
+    card(ws.vehicles.byGroup[self.group] *
+         ws.vehicles.selected) == card(ws.vehicles.byGroup[self.group])
+  else: false
 
 proc select(self: var Selection, ws: WorldState, m: var Move): SelectionStatus =
   if self.isSelected(ws):

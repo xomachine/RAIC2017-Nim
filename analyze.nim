@@ -9,7 +9,7 @@ from vehicles import Vehicles
 from tables import Table
 
 const flyers* = {1,2}
-const typenames = [
+const typenames* = [
   "arrv",
   "fighter",
   "helicopter",

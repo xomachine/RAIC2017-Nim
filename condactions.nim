@@ -1,13 +1,15 @@
 from actions import Action
 from enhanced import VehicleId
+from sets import HashSet
 
 proc wait*(ticks: Natural): Action
-proc atMoveEnd*(group: set[VehicleId]): Action
+proc atMoveEnd*(group: HashSet[VehicleId]): Action
 
 from model.move import Move
 from analyze import WorldState
 from actions import ActionStatus
 from groupcounter import GroupCounter
+from sets import `*`, card
 
 proc wait(ticks: Natural): Action =
   var targettick = -1
@@ -19,7 +21,7 @@ proc wait(ticks: Natural): Action =
     return ActionStatus.skip
   return inner
 
-proc atMoveEnd(group: set[VehicleId]): Action =
+proc atMoveEnd(group: HashSet[VehicleId]): Action =
   var ticks = 0
   proc inner(ws: WorldState, gc: var GroupCounter, m: var Move): ActionStatus =
     let v = ws.vehicles

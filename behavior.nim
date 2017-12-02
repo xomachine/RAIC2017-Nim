@@ -6,6 +6,7 @@ type
     inactive
     hold
     act
+    actUnselected
   Behavior* = object
     tick*: proc (ws: WorldState): BehaviorStatus {.closure.}
     action*: proc (ws: WorldState, m: var Move) {.closure.}

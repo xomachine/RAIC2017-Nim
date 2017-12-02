@@ -1,8 +1,10 @@
 from enhanced import VehicleId
-from analyze import Vehicles
+from vehicles import Vehicles
+from sets import HashSet
 
-type Clusters* = seq[set[VehicleId]]
-proc clusterize*(self: var Vehicles, unitset: set[VehicleId]): Clusters
+type Clusters* = seq[HashSet[VehicleId]]
+proc clusterize*(self: Vehicles, unitset: HashSet[VehicleId]): Clusters
+proc invalidate*(updated: HashSet[VehicleId])
 
 const gridsize = 11
 const thresh = 10
@@ -11,44 +13,61 @@ const maxsize = (1024 div gridsize) + 1
 
 from tables import `[]`, initTable, contains, `[]=`
 from model.unit import getSquaredDistanceTo
+from enhanced import EVehicle
+from vehicles import resolve
+from utils import debug
+from sets import initSet, contains, incl, excl, items, card, `-`, `+`, `*`, init
+from sequtils import toSeq
 
-var cache = initTable[set[VehicleId], Clusters]()
+var cacheInValid = initSet[VehicleId]()
 
-proc clusterize(self: var Vehicles, unitset: set[VehicleId]): Clusters =
-  if unitset in cache and card(unitset * self.clusterCacheInvalid) == 0:
-    return cache[unitset]
-  var data = newSeq[set[VehicleId]]()
-  var indicies: set[uint16]
-  var allclusters: set[VehicleId] # already finished units
-  var grid: array[maxsize, array[maxsize, set[VehicleId]]]
-  for id in unitset.items():
+proc invalidate(updated: HashSet[VehicleId]) =
+  cacheInValid = cacheInvalid + updated
+
+{.push checks:off,optimization:speed.}
+proc initGrid(): seq[array[maxsize, HashSet[VehicleId]]] =
+  result = newSeq[array[maxsize, HashSet[VehicleId]]](maxsize)
+  for i in 0..<result.len():
+    for j in 0..<maxsize:
+      result[i][j] = initSet[VehicleId]()
+
+proc clusterize(self: Vehicles, unitset: HashSet[VehicleId]): Clusters =
+  let units = self.resolve(unitset)
+  let uc = toSeq(unitset.items)
+  var cache {.global.} = initTable[seq[VehicleId], Clusters]()
+  if uc in cache and card(unitset * cacheInValid) == 0:
+    return cache[uc]
+  var data = newSeq[HashSet[VehicleId]]()
+  var indicies = initSet[VehicleId]()
+  var allclusters: HashSet[VehicleId] # already finished units
+  allclusters.init()
+  # WARNING! stack size is not infinity!
+  var grid = initGrid()
+  #debug("Cluster alive!")
+  for unit in units:
     # Filling the grid with units
-    let unit = self.byId[id]
-    let gridx = int(unit.x) div gridsize
-    let gridy = int(unit.y) div gridsize
-    grid[gridx][gridy].incl(id)
-  for id in unitset.items():
+    grid[unit.gridx][unit.gridy].incl(unit.sid)
+  for unit in units:
+    let id = unit.sid
     if id in allclusters:
       continue
-    var newcluster: set[VehicleId]
+    var newcluster = initSet[VehicleId]()
     newcluster.incl(id)
-    let unit = self.byId[id]
-    let gridx = int(unit.x) div gridsize
-    let gridy = int(unit.y) div gridsize
     # Checking neighbour cells
-    for gx in (gridx-1)..(gridx+1):
+    for gx in (unit.gridx-1)..(unit.gridx+1):
       if gx notin 0..maxsize:
         continue
-      for gy in (gridy-1)..(gridy+1):
+      for gy in (unit.gridy-1)..(unit.gridy+1):
         if gy notin 0..maxsize:
           continue
         let cell = grid[gx][gy]
-        for nid in cell.items():
-          let dst = self.byId[nid].getSquaredDistanceTo(unit.x, unit.y)
-          if dst <= squaredthresh:
-            newcluster.incl(nid)
+        newcluster = newcluster + cell
+        #for nid in cell.items():
+        #  let dst = self.byId[nid].getSquaredDistanceTo(unit.x, unit.y)
+        #  if dst <= squaredthresh:
+        #    newcluster.incl(nid)
     # Checking and uniting intersecting clusters
-    var to_remove: set[VehicleId]
+    var to_remove = initSet[VehicleId]()
     for c in indicies:
       let cluster = data[c.int]
       if card(cluster * newcluster) == 0:
@@ -58,11 +77,11 @@ proc clusterize(self: var Vehicles, unitset: set[VehicleId]): Clusters =
     indicies.incl(data.len().uint16)
     data.add(newcluster)
     allclusters = allclusters + newcluster
-  result = newSeq[set[VehicleId]](indicies.card())
+  result = newSeq[HashSet[VehicleId]](indicies.card())
   var i = 0
   for c in indicies:
     result[i] = data[c.int]
     inc(i)
-  cache[unitset] = result
-  self.clusterCacheInvalid = self.clusterCacheInvalid - unitset
-
+  cache[uc] = result
+  cacheInvalid = cacheInvalid - unitset
+{.pop.}

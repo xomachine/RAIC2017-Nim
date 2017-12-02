@@ -12,10 +12,18 @@ type
     bottom: float64
 
 proc areaFromUnits*(units: seq[PointConcept]): Area
+proc inArea*(unit: PointConcept, a: Area): bool
+proc getSqDistance*(u1, u2: PointConcept): float
 template debug*(v: string) =
   when defined(stdebug):
     echo v
 
+proc getSqDistance(u1, u2: PointConcept): float =
+  let dx = (u1.x - u2.x)
+  let dy = (u1.y - u2.y)
+  dx*dx + dy*dy
+proc inArea(unit: PointConcept, a: Area): bool =
+  unit.x in a.left..a.right and unit.y in a.top..a.bottom
 proc areaFromUnits(units: seq[PointConcept]): Area =
   result.left = 1024
   result.top = 1024

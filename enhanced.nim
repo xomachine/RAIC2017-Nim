@@ -1,6 +1,8 @@
 from model.vehicle import Vehicle
 from model.vehicle_type import VehicleType
 
+const gridsize* = 16
+
 type
   Group* = uint8
   VehicleId* = uint16
@@ -15,6 +17,8 @@ type
     maxDurability: int32
     x: float64
     y: float64
+    gridx: int
+    gridy: int
 
 proc fromVehicle*(v: Vehicle): EVehicle =
   result.id = v.id
@@ -23,6 +27,8 @@ proc fromVehicle*(v: Vehicle): EVehicle =
   result.thetype = v.thetype
   result.x = v.x
   result.y = v.y
+  result.gridx = v.x.int div gridsize
+  result.gridy = v.y.int div gridsize
   result.durability = v.durability
   result.maxDurability = v.maxDurability
   for g in v.groups:

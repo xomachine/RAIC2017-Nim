@@ -9,14 +9,15 @@ proc initTogetherBehavior*(holder: Selection): Behavior
 
 from vehicles import resolve, toGroup
 from borders import obtainCenter, obtainBorders, area
+from utils import debug
 from math import PI
 from tables import `[]`
+from sets import `*`, card
 
 proc initTogetherBehavior(holder: Selection): Behavior =
   # fields (perfecly incapsulated!)
   var holder = holder
   var lastAngle = PI
-  var center: Point
   var lastAction: ActionType
   var counter: int
   # methods
@@ -29,10 +30,11 @@ proc initTogetherBehavior(holder: Selection): Behavior =
     let units = ws.vehicles.resolve(holder.group)
     if units.len() == 0:
       return BehaviorStatus.inactive
-    center = obtainCenter(units)
+    let center = obtainCenter(units)
     let area = area(obtainBorders(center, units))
     let density = units.len().toFloat() / area
     if density < criticaldensity:
+      debug("Density: " & $density & ", critical: " & $criticaldensity)
       return BehaviorStatus.act
     else:
       reset()
@@ -41,19 +43,22 @@ proc initTogetherBehavior(holder: Selection): Behavior =
     const maxcount = 50
     if lastAction != ActionType.SCALE:
       if counter <= 0:
+        let center = obtainCenter(ws.vehicles.resolve(holder.group))
         m.action = ActionType.SCALE
-        lastAction = m.action
+        lastAction = ActionType.SCALE
         m.x = center.x
         m.y = center.y
         m.factor = 0.1
+        debug("Scaling:" & $m.factor)
       else:
         counter -= 1
     elif card(ws.vehicles.updated *
               ws.vehicles.byGroup[holder.group]) == 0:
+      let center = obtainCenter(ws.vehicles.resolve(holder.group))
       m.action = ActionType.ROTATE
       m.angle = lastAngle
       m.x = center.x
       m.y = center.y
       lastAngle *= -1
-      lastAction = m.action
+      lastAction = ActionType.ROTATE
       counter = maxcount

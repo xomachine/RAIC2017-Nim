@@ -4,8 +4,10 @@ from model.vehicle_type import VehicleType
 proc initInitial*(types: seq[VehicleType]): PlayerBehavior
 
 from tables import `[]`
+from sets import `*`, card, `+`, `-`, init, HashSet
 from model.move import Move
-from actions import Action, newSelection, actmove, group, ungroup, ActionStatus
+from actions import Action, newSelection, actmove, group, ungroup, ActionStatus,
+                    addToSelection
 from actionchain import initActionChain, ActionChain
 from analyze import WorldState, flyers
 from condactions import atMoveEnd
@@ -82,12 +84,13 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
       # Placing squads one per column
       let nonmovables = v.byType[VehicleType.TANK] +
                         v.byType[VehicleType.HELICOPTER]
-      var perline: array[3, set[VehicleId]]
-      var percol: array[3, set[VehicleId]]
+      var perline: array[3, HashSet[VehicleId]]
+      var percol: array[3, HashSet[VehicleId]]
       var freeCols: set[uint8]
       var overquotted: uint8
       var overquottedLen = 0
-      var toi: set[VehicleId]
+      var toi: HashSet[VehicleId]
+      toi.init()
       for t in types:
         toi = toi + v.byType[t]
       for l in 0'u8..2'u8:
@@ -100,7 +103,8 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
         elif size > 1:
           overquotted = c
           overquottedLen = size
-      var shifted: set[VehicleId]
+      var shifted: HashSet[VehicleId]
+      shifted.init()
       debug($freeCols)
       debug("Overquotted col: " & $overquotted & " has len " & $overquottedLen)
       while overquottedLen > 1:
@@ -186,13 +190,17 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
         groups[i] = gc.getFreeGroup()
       proc every(i: int, pa: Area): ActionChain =
         let ngroup = groups[i]
-        let selection = initSelection(ngroup, @[newSelection(aarea)])
+        result = newSeq[Action]()
+        result.add(newSelection((left: 0.0, right:0.0, top:0.0, bottom:0.0)))
+        for i in types:
+          result.add(addToSelection(pa, i))
+        let selection = initSelection(ngroup, result)
         let theformation =
           if types[0].ord in flyers: newAerialFormation(selection)
           else: newGroundFormation(selection)
         formations.add(theformation)
-        @[]
-      discard devide(aarea, 2, every)
+        result.add(group(ngroup))
+      actionChains &= devide(aarea, 2, every)
     elif stagedone(3) and formations.len() == 0:
       # All formations are created, so removing ourselves
       debug("Stage 3 done!")
