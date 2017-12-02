@@ -2,7 +2,7 @@ from model.vehicle import Vehicle
 from model.vehicle_type import VehicleType
 
 const gridsize* = 16
-
+const maxsize* = (1024 div gridsize)
 type
   Group* = uint8
   VehicleId* = uint16

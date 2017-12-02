@@ -4,7 +4,7 @@ from model.vehicle_type import VehicleType
 proc initInitial*(types: seq[VehicleType]): PlayerBehavior
 
 from tables import `[]`
-from fastset import `*`, card, `+`, `-`, clear, FastSet, empty
+from fastset import `*`, card, `+`, `-`, clear, FastSet, empty, `+=`, intersects
 from model.move import Move
 from actions import Action, newSelection, actmove, group, ungroup, ActionStatus,
                     addToSelection
@@ -92,7 +92,7 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
       var toi: FastSet[VehicleId]
       #toi.init()
       for t in types:
-        toi = toi + v.byType[t]
+        toi += v.byType[t]
       for l in 0'u8..2'u8:
         perline[l] = v.inArea(alines[l]) * toi
       for c in 0'u8..2'u8:
@@ -119,7 +119,7 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
         if overquotted != 1 and targetcol != 1:
           var shiftline = -1
           for l in 0'u8..2:
-            if not (perline[l] * realtoshift).empty:
+            if perline[l].intersects(realtoshift):
               shiftline = l
               break
           let obstacle = percol[1] * perline[shiftline]

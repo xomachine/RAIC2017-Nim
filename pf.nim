@@ -1,11 +1,8 @@
 from utils import Point
+from enhanced import EVehicle, maxsize, gridsize
 from math import sgn
+from borders import Vertex
 
-const gridsize = 128
-const staticWidth = 1024
-const staticHeight = 1024
-const cellWidth = staticWidth div gridsize
-const cellHeight = staticHeight div gridsize
 type
   Some2D = concept d
     d.x is SomeNumber
@@ -16,19 +13,19 @@ type
   Vector = object
     x: float64
     y: float64
-  FieldGrid = array[gridsize, array[gridsize, Vector]]
+  FieldGrid = array[maxsize, array[maxsize, Vector]]
 
-proc getSumField*(self: FieldGrid, p: Point): Vector
+proc getField*(self: FieldGrid, p: EVehicle): Vector {.inline.}
 proc pointGrid*(p: Point, cutoff, power: float): FieldGrid
+proc formationField*(center: Point, vertices: array[16, Vertex]): FieldGrid
+proc `+`*(a, b: FieldGrid): FieldGrid
 proc `-`(a, b: Some2D): Some2D {.inline.}
 
-proc sqr(a: SomeNumber): SomeNumber =
+proc sqr(a: SomeNumber): SomeNumber {.inline.} =
   a*a
 
-proc getSumField(self: FieldGrid, p: Point): Vector =
-  let x = int(p.x) div cellWidth
-  let y = int(p.y) div cellHeight
-  self[x][y]
+proc getField(self: FieldGrid, p: EVehicle): Vector =
+  self[p.gridx][p.gridy]
 
 proc pointField(p, distractor: GridPoint, cutoff, power: float): Vector =
   let relToPoint = p - distractor
@@ -49,27 +46,38 @@ proc borderField(p: GridPoint, width, height: int): Vector =
   Vector(x: x.toFloat(), y: y.toFloat())
 
 proc pointGrid(p: Point, cutoff, power: float): FieldGrid =
-  let pp = GridPoint(x: p.x.int div cellWidth, y: p.y.int div cellHeight)
-  for i in 0..<gridsize:
-    for j in 0..<gridsize:
+  let pp = GridPoint(x: p.x.int div gridsize, y: p.y.int div gridsize)
+  let gridoff = (cutoff.int div gridsize) + 1
+  let startx = max(pp.x - gridoff, 0)
+  let endx = min(pp.x + gridoff, maxsize-1)
+  let endy = min(pp.y + gridoff, maxsize-1)
+  let starty = max(pp.y - gridoff, 0)
+  for i in startx..endx:
+    for j in starty..endy:
       result[i][j] = pointField(GridPoint(x:i,y:j), pp, cutoff, power)
 
-
 proc borderGrid(): FieldGrid =
-  for i in 0..<gridsize:
-    for j in 0..<gridsize:
-      result[i][j] = borderField(GridPoint(x: i, y: j), gridsize, gridsize)
+  for i in 0..<maxsize:
+    for j in 0..<maxsize:
+      result[i][j] = borderField(GridPoint(x: i, y: j), maxsize, maxsize)
 
+proc formationField(center: Point, vertices: array[16, Vertex]): FieldGrid =
+  const cutoff = 50
+  const power = 10
+  result = pointGrid(center, cutoff, power)
+  for v in vertices:
+    if v.distanceToCenter > 0:
+      result = result + pointGrid(v.point, cutoff/5, power)
 
 proc `+`(a, b: Vector): Vector {.inline.} =
-  result.x = a.x + b.x
-  result.y = a.y + b.y
+  result.x = (a.x + b.x)*abs(a.x)*abs(b.x)
+  result.y = (a.y + b.y)*abs(a.y)*abs(b.y)
 proc `-`(a, b: Some2D): Some2D =
   result.x = a.x - b.x
   result.y = a.y - b.y
 
-proc `+`(a, b: FieldGrid): FieldGrid =
-  for i in 0..<gridsize:
-    for j in 0..<gridsize:
-      result[i][j] = a[i][j] + b[i][j]
 
+proc `+`(a, b: FieldGrid): FieldGrid =
+  for i in 0..<maxsize:
+    for j in 0..<maxsize:
+      result[i][j] = a[i][j] + b[i][j]

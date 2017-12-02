@@ -17,7 +17,7 @@ proc initSelection*(group: Group, steps: seq[Action]): Selection
 proc select*(self: var Selection, ws: WorldState, m: var Move): SelectionStatus
 
 from tables import `[]`, contains
-from fastset import `*`, `==`
+from fastset import `==`
 from groupcounter import GroupCounter
 from actions import ActionStatus, group
 from model.action_type import ActionType

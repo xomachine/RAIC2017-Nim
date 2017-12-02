@@ -5,7 +5,7 @@ from math import sqrt, sin, PI
 type
   Vertex* = tuple
     distanceToCenter: float
-    point: EVehicle
+    point: Point
 
 proc obtainCenter*(units: seq[EVehicle]): Point
 proc obtainBorders*(center: Point, units: seq[EVehicle]): array[16, Vertex]
@@ -36,7 +36,8 @@ proc obtainBorders(center: Point, units: seq[EVehicle]): array[16, Vertex] =
     let orderedNum = reversed[sectornum]
     let distance = arelx + arely
     if result[orderedNum].distanceToCenter < distance:
-      result[orderedNum] = (distanceToCenter: distance, point: vehicle)
+      result[orderedNum] = (distanceToCenter: distance,
+                            point: (x:vehicle.x, y: vehicle.y))
 
 proc makeSinuses(): array[8, float] {.compileTime.} =
   for i in 0..<result.len():

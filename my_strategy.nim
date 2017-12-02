@@ -6,7 +6,7 @@ from model.game import Game
 
 from analyze import WorldState, initWorldState, update
 from scheduler import Scheduler, tick, initScheduler
-
+{.optimization: speed, checks:off.}
 type MyStrategy* = object
   worldState: WorldState
   scheduler: Scheduler
@@ -14,6 +14,8 @@ type MyStrategy* = object
 
 proc initMyStrategy*(): MyStrategy =
   # put your initialization code here
+  GC_disableMarkAndSweep()
+  #GC_disable()
   discard
 
 proc move*(self: var MyStrategy, player: Player, world: World, game: Game,

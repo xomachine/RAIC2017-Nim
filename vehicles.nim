@@ -5,13 +5,11 @@ from model.vehicle_type import VehicleType
 from model.world import World
 from model.game import Game
 from model.player import Player
-from enhanced import VehicleId, EVehicle, Group
+from enhanced import VehicleId, EVehicle, Group, gridsize, maxsize
 from utils import Area
 from fastset import FastSet
 
 const maxHealthRange = 4
-const gridsize* = 16
-const maxsize* = (1024 div gridsize) + 1
 
 type
   HealthLevel* = 0..maxHealthRange

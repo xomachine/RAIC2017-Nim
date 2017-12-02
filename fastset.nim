@@ -1,23 +1,31 @@
 from math import pow
 
+const seqs = true
+
 type
   FastSet*[T: uint8 | uint16] = object
-    maxbyte: int
-    when T is uint8:
-      data: array[(high(uint8)+1) div 32, uint32]
-    when T is uint16:
-      data: array[(high(uint16)+1) div 32, uint32]
+    when seqs:
+      data: seq[uint32]
+    else:
+      maxbyte: int
+      when T is uint8:
+        data: array[(high(uint8)+1) div 32, uint32]
+      when T is uint16:
+        data: array[(high(uint16)+1) div 32, uint32]
 
 
 proc incl*[T](self: var FastSet[T], v: T)
 proc excl*[T](self: var FastSet[T], v: T)
 proc `*`*[T](a, b: FastSet[T]): FastSet[T]
+proc `+=`*[T](a: var FastSet[T], b: FastSet[T])
+proc `-=`*[T](a: var FastSet[T], b: FastSet[T])
 proc `+`*[T](a, b: FastSet[T]): FastSet[T]
 proc `-`*[T](a, b: FastSet[T]): FastSet[T]
 proc `==`*[T](a, b: FastSet[T]): bool
+proc intersects*[T](a, b: FastSet[T]): bool
 proc empty*[T](a: FastSet[T]): bool
 proc contains*[T](a: FastSet[T], x: T): bool
-proc contains*[T](a, b: FastSet[T]): bool
+#proc contains*[T](a, b: FastSet[T]): bool
 proc card*[T](a: FastSet[T]): int
 proc pop*[T](a: var FastSet[T]): T
 proc clear*[T](a: var FastSet[T])
@@ -28,62 +36,152 @@ from bitops import popcount, countLeadingZeroBits, countTrailingZeroBits
 proc incl[T](self: var FastSet[T], v: T) =
   var i = v mod 32
   var bn = (v div 32).int
-  self.maxbyte = max(bn, self.maxbyte)
+  when seqs:
+    if self.data.isNil():
+      self.data = newSeq[uint32](bn+1)
+    self.data.setLen(max(self.data.len(), bn+1))
+  else:
+    self.maxbyte = max(bn, self.maxbyte)
   self.data[bn] = self.data[bn] or (0x1'u32 shl i)
 proc excl[T](self: var FastSet[T], v: T) =
   var i = v mod 32
-  var bn = v div 32
+  var bn = (v div 32).int
+  when seqs:
+    if self.data.isNil or self.data.len <= bn:
+      return
   self.data[bn] = self.data[bn] and (0xFFFFFFFF'u32 xor (0x1'u32 shl i))
 proc `==`[T](a, b: FastSet[T]): bool =
-  let maxbyte = max(a.maxbyte, b.maxbyte)
+  when seqs:
+    let (least, maxbyte) =
+      if a.data.len() > b.data.len():
+        (a.data, b.data.len-1)
+      elif a.data.len() < b.data.len():
+        (nil, b.data.len-1)
+      else:
+        (b.data, a.data.len-1)
+    for i in (maxbyte+1)..<least.len:
+      if least[i] != 0: return false
+  else:
+    let maxbyte = max(a.maxbyte, b.maxbyte)
   for i in 0..maxbyte:
     if a.data[i] != b.data[i]:
       return false
   return true
+#{.push checks:off.}
+proc intersects[T](a, b: FastSet[T]): bool =
+  when seqs:
+    if a.data.isNil or b.data.isNil:
+      return true
+    let maxbyte = min(a.data.len, b.data.len) - 1
+  else:
+    let maxbyte = min(a.maxbyte, b.maxbyte)
+  for i in 0..maxbyte:
+    if (b.data[i] and a.data[i]) != 0'u32:
+      return true
+  return false
+#{.pop.}
 proc `*`[T](a, b: FastSet[T]): FastSet[T] =
-  result.maxbyte = max(a.maxbyte, b.maxbyte)
-  for i in 0..result.maxbyte:
+  when seqs:
+    if a.data.isNil or b.data.isNil:
+      return
+    let maxbyte = min(a.data.len, b.data.len) - 1
+    result.data = newSeq[uint32](maxbyte + 1)
+  else:
+    let maxbyte = min(a.maxbyte, b.maxbyte)
+  for i in 0..maxbyte:
     result.data[i] = b.data[i] and a.data[i]
+proc `+=`[T](a: var FastSet[T], b: FastSet[T]) =
+  when seqs:
+    let maxbyte = b.data.len - 1
+    if b.data.isNil():
+      return
+    elif a.data.isNil:
+      a.data.deepCopy(b.data)
+      return
+    elif b.data.len > a.data.len:
+      a.data.setLen(b.data.len)
+  else:
+    let maxbyte = max(a.maxbyte, b.maxbyte)
+    a.maxbyte = maxbyte
+  for i in 0..maxbyte:
+    a.data[i] = a.data[i] or b.data[i]
 proc `+`[T](a, b: FastSet[T]): FastSet[T] =
-  result.maxbyte = max(a.maxbyte, b.maxbyte)
-  for i in 0..result.maxbyte:
-    result.data[i] = b.data[i] or a.data[i]
+  result.deepCopy(a)
+  result += b
+proc `-=`[T](a: var FastSet[T], b: FastSet[T]) =
+  when seqs:
+    let maxbyte = min(a.data.len, b.data.len) - 1
+  else:
+    let maxbyte = a.maxbyte
+  for i in 0..maxbyte:
+    a.data[i] = (0xFFFFFFFF'u32 xor b.data[i]) and a.data[i]
 proc `-`[T](a, b: FastSet[T]): FastSet[T] =
-  result.maxbyte = a.maxbyte
-  for i in 0..result.maxbyte:
-    result.data[i] = (0xFFFFFFFF'u32 xor b.data[i]) and a.data[i]
+  result.deepCopy(a)
+  result -= b
 proc empty[T](a: FastSet[T]): bool =
-  for i in 0..a.maxbyte:
+  when seqs:
+    if a.data.isNil() or a.data.len() == 0:
+      return true
+    let maxbyte = a.data.len - 1
+  else:
+    let maxbyte = a.maxbyte
+  for i in 0..maxbyte:
     if a.data[i] > 0'u32:
       return false
   return true
 
 proc contains[T](a: FastSet[T], x: T): bool =
-  let bn = x div 32
+  let bn = int(x div 32)
   let bitn = x mod 32
-  (a.data[bn] and (1'u32 shl bitn)) > 0'u32
-proc contains[T](a, b: FastSet[T]): bool =
-  let maxbyte = max(a.maxbyte, b.maxbyte)
-  for i in 0..maxbyte:
-    if a.data[i] and b.data[i] != b.data[i]:
+  when seqs:
+    if a.data.isNil() or a.data.len <= bn:
       return false
-  return true
+  (a.data[bn] and (1'u32 shl bitn)) > 0'u32
+#proc contains[T](a, b: FastSet[T]): bool =
+#  when seqs:
+#    if b.isNil: return true
+#    elif a.isNil: return false
+#    let maxbyte = max(a.data.len(), b.data.len())
+#  else:
+#    let maxbyte = max(a.maxbyte, b.maxbyte)
+#  for i in 0..maxbyte:
+#    let achunk: uint32 =
+#      if i >= a.data.len: 0
+#      else: a.data[i]
+#    let bchunk: uint32 =
+#      if i >= b.data.len: 0
+#      else: b.data[i]
+#    if a.data[i] and achunk != bchunk:
+#      return false
+#  return true
 
 proc card[T](a: FastSet[T]): int =
-  for i in 0..a.maxbyte:
+  when seqs:
+    if a.data.isNil or a.data.len == 0:
+      return 0
+    let maxbyte = a.data.len()-1
+  else:
+    let maxbyte = a.maxbyte
+  for i in 0..maxbyte:
     result += popcount(a.data[i])
-proc pickImpl[T](a: FastSet[T]): tuple[val: T, valid: bool] =
-  for i in 0..a.maxbyte:
-    if a.data[i] == 0:
-      result.val += 32
-      continue
-    else:
-      result.val += countTrailingZeroBits(a.data[i]).T
-      result.valid = true
-      return
+#proc pickImpl[T](a: FastSet[T]): tuple[val: T, valid: bool] =
+#  for i in 0..a.maxbyte:
+#    if a.data[i] == 0:
+#      result.val += 32
+#      continue
+#    else:
+#      result.val += countTrailingZeroBits(a.data[i]).T
+#      result.valid = true
+#      return
 proc popImpl[T](a: var FastSet[T]): tuple[val: T, valid: bool] =
   result.valid = false
-  for i in 0..a.maxbyte:
+  when seqs:
+    if a.data.isNil or a.data.len == 0:
+      return
+    let maxbyte = a.data.len() - 1
+  else:
+    let maxbyte = a.maxbyte
+  for i in 0..maxbyte:
     if a.data[i] == 0:
       result.val += 32
       continue
@@ -105,14 +203,15 @@ proc clear[T](a: var FastSet[T]) =
 
 iterator items*[T](s: FastSet[T]): T =
    var x = s.data
-   for byten in 0..s.maxbyte:
-    if x[byten] == 0:
-      continue
-    else:
-      while x[byten] != 0'u32:
-        let bitn = countTrailingZeroBits(x[byten])
-        yield (bitn + byten * 32).T
-        x[byten] = x[byten] xor (1'u32 shl bitn)
+   when seqs:
+     let maxbyte = x.len() - 1
+   else:
+     let maxbyte = s.maxbyte
+   for byten in 0..maxbyte:
+     while x[byten] != 0'u32:
+       let bitn = countTrailingZeroBits(x[byten])
+       yield (bitn + byten * 32).T
+       x[byten] = x[byten] xor (1'u32 shl bitn)
 when isMainModule:
   var a: FastSet[uint8]
   assert(a.empty())
