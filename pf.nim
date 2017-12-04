@@ -2,82 +2,163 @@ from utils import Point
 from enhanced import EVehicle, maxsize, gridsize
 from math import sgn
 from borders import Vertex
+from model.move import Move
 
 type
-  Some2D = concept d
-    d.x is SomeNumber
-    d.x is SomeNumber
-  GridPoint = object
+  FieldDescriptor* = proc(p: GridPoint): uint8
+  GridPoint* = object
     x: int
     y: int
-  Vector = object
+  Vector* = object
     x: float64
     y: float64
-  FieldGrid = array[maxsize, array[maxsize, Vector]]
+  FieldGrid* = tuple
+    grid: array[maxsize, array[maxsize, uint8]]
+    power: int
 
-proc getField*(self: FieldGrid, p: EVehicle): Vector {.inline.}
-proc pointGrid*(p: Point, cutoff, power: float): FieldGrid
-proc formationField*(center: Point, vertices: array[16, Vertex]): FieldGrid
+proc attractionPoint*(p: Point): FieldDescriptor {.inline.}
+proc applyField*(self: var FieldGrid, descriptor: FieldDescriptor)
+proc applyFields*(self: var FieldGrid, descriptors: seq[FieldDescriptor])
+proc applyVector*(m: var Move, v: Vector) {.inline.}
+proc pointAttractiveField(p, attractor: GridPoint): uint8 {.inline.}
+proc getVector*(self: FieldGrid, p: Point): Vector {.inline.}
+proc formationVector*(self: FieldGrid, c: Point,
+                     verticies: array[16, Vertex]): Vector
+proc applyAttackField*(self: var FieldGrid, center: Point,
+                       vertices: array[16, Vertex])
+proc applyRepulsiveFormationField*(self: var FieldGrid, center: Point,
+                                   vertices: array[16, Vertex])
+proc borderGrid(): FieldGrid
+let EdgeField* = borderGrid()
 proc `+`*(a, b: FieldGrid): FieldGrid
-proc `-`(a, b: Some2D): Some2D {.inline.}
 
-proc sqr(a: SomeNumber): SomeNumber {.inline.} =
+from model.action_type import ActionType
+from tables import values
+from utils import debug
+from math import ln, log10, log2
+
+template sqr[T: SomeNumber](a: T): T =
   a*a
+proc gridFromPoint(p: Point): GridPoint {.inline.} =
+  GridPoint(x: int(p.x / gridsize), y: int(p.y / gridsize))
+proc `+=`(a: var Vector, b: Vector) {.inline.} =
+  a.x = (a.x + b.x)/2
+  a.y = (a.y + b.y)/2
 
-proc getField(self: FieldGrid, p: EVehicle): Vector =
-  self[p.gridx][p.gridy]
+proc attractionPoint(p: Point): FieldDescriptor =
+  let gp = p.gridFromPoint()
+  proc desc(p: GridPoint): uint8 =
+    pointAttractiveField(p, gp)
+  return desc
 
-proc pointField(p, distractor: GridPoint, cutoff, power: float): Vector =
-  let relToPoint = p - distractor
-  let distance = sqr(relToPoint.x) + sqr(relToPoint.y)
-  let scutoff = sqr(cutoff)
-  let shift = max(scutoff - distance.toFloat(), 0) * power
-  Vector(x: shift*relToPoint.x.toFloat(), y: shift*relToPoint.y.toFloat())
+proc getVector(self: FieldGrid, p: Point): Vector =
+  let gridpoint = gridFromPoint(p)
+  let startx = max(gridpoint.x - 1, 0)
+  let starty = max(gridpoint.y - 1, 0)
+  let endx = min(gridpoint.x + 1, maxsize-1)
+  let endy = min(gridpoint.y + 1, maxsize-1)
+  const factor = 1024 div 256
+  result.x = float(self.grid[startx][gridpoint.y] - self.grid[endx][gridpoint.y]) * factor
+  result.y = float(self.grid[gridpoint.x][starty] - self.grid[gridpoint.x][endy]) * factor
+  debug("Resultx: " & $result.x)
+  debug("Resulty: " & $result.y)
 
-proc borderField(p: GridPoint, width, height: int): Vector =
-  let xpadding = width div 10
-  let ypadding = height div 10
-  let center = GridPoint(x: width div 2, y: height div 2)
-  let toCenter: GridPoint = p - center
-  let xcutoff = center.x - xpadding
-  let ycutoff = center.y - ypadding
-  let x = -sgn(toCenter.x) * sqr(max(abs(toCenter.x) - xcutoff, 0))
-  let y = -sgn(toCenter.y) * sqr(max(abs(toCenter.y) - ycutoff, 0))
-  Vector(x: x.toFloat(), y: y.toFloat())
+proc formationVector(self: FieldGrid, c: Point,
+                     verticies: array[16, Vertex]): Vector =
+  result = self.getVector(c)
+  for v in verticies:
+    if v.distanceToCenter > 0:
+      result += self.getVector(v.point)
 
-proc pointGrid(p: Point, cutoff, power: float): FieldGrid =
-  let pp = GridPoint(x: p.x.int div gridsize, y: p.y.int div gridsize)
-  let gridoff = (cutoff.int div gridsize) + 1
-  let startx = max(pp.x - gridoff, 0)
-  let endx = min(pp.x + gridoff, maxsize-1)
-  let endy = min(pp.y + gridoff, maxsize-1)
-  let starty = max(pp.y - gridoff, 0)
-  for i in startx..endx:
-    for j in starty..endy:
-      result[i][j] = pointField(GridPoint(x:i,y:j), pp, cutoff, power)
+proc applyVector(m: var Move, v: Vector) =
+  m.action = ActionType.MOVE
+  m.x = v.x
+  m.y = v.y
+
+proc pointRepulsiveField(p, distractor: GridPoint): uint8 =
+  let distance = sqr(p.x - distractor.x) + sqr(p.y-distractor.y)
+  if distance == 0: 255'u8
+  else: min(255 div distance, 255).uint8
+proc pointAttractiveField(p, attractor: GridPoint): uint8 =
+  let distance = sqr(p.x - attractor.x) + sqr(p.y-attractor.y)
+  const lg = (2*log10(maxsize.float))
+  if distance == 0: 0'u8
+  else: min(max(255*(log10(distance.float)/lg), 0), 255).uint8
+
+proc borderField(p: GridPoint): uint8 =
+  const cutoff = maxsize div 8
+  let center = GridPoint(x: maxsize div 2, y: maxsize div 2)
+  let relativeToCenter = GridPoint(x: p.x - center.x, y: p.y - center.y)
+  let xcutoff = center.x - cutoff
+  let ycutoff = center.y - cutoff
+  min((sqr(max(abs(relativeToCenter.x) - xcutoff, 0)) +
+       sqr(max(abs(relativeToCenter.y) - ycutoff, 0))), 255).uint8
+
+proc applyFields(self: var FieldGrid, descriptors: seq[FieldDescriptor]) =
+  let sumpower = self.power + descriptors.len()
+  for i in 0..<maxsize:
+    for j in 0..<maxsize:
+      var fieldpoint: int = 0
+      for d in descriptors:
+        fieldpoint += d(GridPoint(x:i,y:j)).int
+      self.grid[i][j] = min((fieldpoint +
+                             self.power*self.grid[i][j].int) div sumpower, 255).uint8
+  self.power = sumpower
+proc applyField(self: var FieldGrid, descriptor: FieldDescriptor) =
+  let sumpower = self.power + 1
+  for i in 0..<maxsize:
+    for j in 0..<maxsize:
+      self.grid[i][j] = min((descriptor(GridPoint(x:i,y:j)).int +
+                             self.power*self.grid[i][j].int) div sumpower, 255).uint8
+  self.power = sumpower
 
 proc borderGrid(): FieldGrid =
+  result.power = 1
   for i in 0..<maxsize:
     for j in 0..<maxsize:
-      result[i][j] = borderField(GridPoint(x: i, y: j), maxsize, maxsize)
+      result.grid[i][j] = borderField(GridPoint(x: i, y: j))
 
-proc formationField(center: Point, vertices: array[16, Vertex]): FieldGrid =
-  const cutoff = 50
-  const power = 10
-  result = pointGrid(center, cutoff, power)
+proc applyAttackField(self: var FieldGrid, center: Point,
+                      vertices: array[16, Vertex]) =
+  let centercell = center.gridFromPoint()
+  var desc: FieldDescriptor = proc(p: GridPoint): uint8 =
+    pointAttractiveField(p, centercell)
+  self.applyField(desc)
+  var maxdst:float = 0
+  var maxdstid = -1
+  for i, v in vertices.pairs():
+    if v.distanceToCenter > 0:
+      if v.distanceToCenter > maxdst:
+        maxdst = v.distanceToCenter
+        maxdstid = i
+      closureScope:
+        let cell = v.point.gridFromPoint()
+        desc = proc(p:GridPoint): uint8 =
+          pointAttractiveField(p, cell)
+      self.applyField(desc)
+  # applying weakest point id twice to make it more attractive
+  let cell = vertices[maxdstid].point.gridFromPoint()
+  desc = proc(p:GridPoint): uint8 =
+    pointAttractiveField(p, cell)
+  self.applyField(desc)
+
+proc applyRepulsiveFormationField(self: var FieldGrid, center: Point,
+                                  vertices: array[16, Vertex]) =
+  let centercell = center.gridFromPoint()
+  var desc: FieldDescriptor = proc(p: GridPoint): uint8 =
+    pointRepulsiveField(p, centercell)
+  self.applyField(desc)
   for v in vertices:
     if v.distanceToCenter > 0:
-      result = result + pointGrid(v.point, cutoff/5, power)
-
-proc `+`(a, b: Vector): Vector {.inline.} =
-  result.x = (a.x + b.x)*abs(a.x)*abs(b.x)
-  result.y = (a.y + b.y)*abs(a.y)*abs(b.y)
-proc `-`(a, b: Some2D): Some2D =
-  result.x = a.x - b.x
-  result.y = a.y - b.y
-
+      closureScope:
+        let cell = v.point.gridFromPoint()
+        desc = proc(p:GridPoint): uint8 =
+          pointRepulsiveField(p, cell)
+      self.applyField(desc)
 
 proc `+`(a, b: FieldGrid): FieldGrid =
+  let sumpower = a.power + b.power
   for i in 0..<maxsize:
     for j in 0..<maxsize:
-      result[i][j] = a[i][j] + b[i][j]
+      result.grid[i][j] = min((a.grid[i][j].int*a.power +
+                               b.grid[i][j].int*b.power) div sumpower, 255).uint8

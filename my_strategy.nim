@@ -6,7 +6,7 @@ from model.game import Game
 
 from analyze import WorldState, initWorldState, update
 from scheduler import Scheduler, tick, initScheduler
-{.optimization: speed, checks:off.}
+#{.optimization: speed, checks:off.}
 type MyStrategy* = object
   worldState: WorldState
   scheduler: Scheduler

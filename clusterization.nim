@@ -4,34 +4,34 @@ from fastset import FastSet
 
 type Clusters* = seq[FastSet[VehicleId]]
 proc clusterize*(self: Vehicles, unitset: FastSet[VehicleId]): Clusters
-proc invalidate*(updated: FastSet[VehicleId])
+#proc invalidate*(updated: FastSet[VehicleId])
 
 const thresh = 10
 const squaredthresh = thresh * thresh
 
-from tables import `[]`, initTable, contains, `[]=`
+from tables import `[]`#, initTable, contains, `[]=`
 from lists import items, initDoublyLinkedList, remove, append, nodes
 from model.unit import getSquaredDistanceTo
 from enhanced import EVehicle, maxsize
 from vehicles import resolve
 from utils import debug
-#from sets import initSet, contains, incl, excl, items, card, `-`, `+`, `*`, init
+from hashes import hash, Hash
 from fastset import contains, incl, excl, items, card, `-`, `+`, `*`,
                     intersects, `+=`, `-=`
 from sequtils import toSeq
 
 #var cacheInValid = initSet[VehicleId]()
-var cacheInValid: FastSet[VehicleId]
-proc invalidate(updated: FastSet[VehicleId]) =
-  cacheInValid += updated
+#var cacheInValid: FastSet[VehicleId]
+#proc invalidate(updated: FastSet[VehicleId]) =
+#  cacheInValid += updated
 
 {.push checks:off,optimization:speed.}
 
 proc clusterize(self: Vehicles, unitset: FastSet[VehicleId]): Clusters =
   let units = self.resolve(unitset)
-  #let uc = toSeq(unitset.items())
-  #var cache {.global.} = initTable[seq[VehicleId], Clusters]()
-  #if uc in cache and card(unitset * cacheInValid) == 0:
+  #var cache {.global.} = initTable[Hash, Clusters]()
+  #let uc = hash(units)
+  #if uc in cache and not unitset.intersects(cacheInValid):
   #  return cache[uc]
   var clusters = initDoublyLinkedList[FastSet[VehicleId]]()
   var allclusters: FastSet[VehicleId] # already finished units
@@ -68,5 +68,5 @@ proc clusterize(self: Vehicles, unitset: FastSet[VehicleId]): Clusters =
   for c in clusters:
     result.add(c)
   #cache[uc] = result
-  #cacheInvalid = cacheInvalid - unitset
+  #cacheInvalid -= unitset
 {.pop.}

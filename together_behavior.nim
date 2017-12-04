@@ -9,10 +9,11 @@ proc initTogetherBehavior*(holder: Selection): Behavior
 
 from vehicles import resolve, toGroup
 from borders import obtainCenter, obtainBorders, area
+from formation_info import FormationInfo
 from utils import debug
 from math import PI
 from tables import `[]`
-from fastset import `*`, card
+from fastset import intersects
 
 proc initTogetherBehavior(holder: Selection): Behavior =
   # fields (perfecly incapsulated!)
@@ -25,25 +26,23 @@ proc initTogetherBehavior(holder: Selection): Behavior =
     lastAction = ActionType.NONE
     counter = 0
   result.reset = reset
-  result.tick = proc(ws: WorldState): BehaviorStatus =
+  result.tick = proc(ws: WorldState, finfo: FormationInfo): BehaviorStatus =
     const criticalDensity = 1/16
-    let units = ws.vehicles.resolve(holder.group)
-    if units.len() == 0:
+    if finfo.units.len() == 0:
       return BehaviorStatus.inactive
-    let center = obtainCenter(units)
-    let area = area(obtainBorders(center, units))
-    let density = units.len().toFloat() / area
+    let area = area(finfo.vertices)
+    let density = finfo.units.len().toFloat() / area
     if density < criticaldensity:
       debug("Density: " & $density & ", critical: " & $criticaldensity)
       return BehaviorStatus.act
     else:
       reset()
       return BehaviorStatus.inactive
-  result.action = proc(ws: WorldState, m: var Move) =
+  result.action = proc(ws: WorldState, fi: FormationInfo, m: var Move) =
     const maxcount = 50
     if lastAction != ActionType.SCALE:
       if counter <= 0:
-        let center = obtainCenter(ws.vehicles.resolve(holder.group))
+        let center = fi.center
         m.action = ActionType.SCALE
         lastAction = ActionType.SCALE
         m.x = center.x
@@ -52,9 +51,8 @@ proc initTogetherBehavior(holder: Selection): Behavior =
         debug("Scaling:" & $m.factor)
       else:
         counter -= 1
-    elif card(ws.vehicles.updated *
-              ws.vehicles.byGroup[holder.group]) == 0:
-      let center = obtainCenter(ws.vehicles.resolve(holder.group))
+    elif not ws.vehicles.updated.intersects(ws.vehicles.byGroup[holder.group]):
+      let center = fi.center
       m.action = ActionType.ROTATE
       m.angle = lastAngle
       m.x = center.x

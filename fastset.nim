@@ -56,9 +56,9 @@ proc `==`[T](a, b: FastSet[T]): bool =
       if a.data.len() > b.data.len():
         (a.data, b.data.len-1)
       elif a.data.len() < b.data.len():
-        (nil, b.data.len-1)
-      else:
         (b.data, a.data.len-1)
+      else:
+        (nil, b.data.len-1)
     for i in (maxbyte+1)..<least.len:
       if least[i] != 0: return false
   else:

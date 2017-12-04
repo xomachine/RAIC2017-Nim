@@ -18,6 +18,7 @@ from pbehavior import PBResult, PBRType
 from selection import initSelection
 from vehicles import resolve, toType, toArea, inArea, `*`
 from utils import Area, Point, areaFromUnits, debug
+from production import initProduction
 
 const hi = 18.0
 const lo = 220.0
@@ -201,9 +202,12 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
         formations.add(theformation)
         result.add(group(ngroup))
       actionChains &= devide(aarea, 2, every)
-    elif stagedone(3) and formations.len() == 0:
+    elif formations.len() == 0 and stagedone(3):
       # All formations are created, so removing ourselves
       debug("Stage 3 done!")
+      return PBResult(kind: PBRType.addPBehavior, behavior: initProduction())
+    elif stagedone(4):
+      debug("Stage 4 done!")
       return PBResult(kind: PBRType.removeMe)
     if actionChains.len() > 0:
       return PBResult(kind: PBRType.addPBehavior,

@@ -8,12 +8,19 @@ from model.player import Player
 from enhanced import VehicleId, EVehicle, Group, gridsize, maxsize
 from utils import Area
 from fastset import FastSet
+from pf import FieldGrid
+from borders import Vertex
+from utils import Point
 
 const maxHealthRange = 4
 
 type
   HealthLevel* = 0..maxHealthRange
   Conv = proc (self: Vehicles): FastSet[VehicleId]
+  Cluster* = tuple
+    cluster: FastSet[VehicleId]
+    center: Point
+    vertices: array[16, Vertex]
   Vehicles* = tuple
     updated: FastSet[VehicleId]
     mine: FastSet[VehicleId]
@@ -22,6 +29,9 @@ type
     byGroup: Table[Group, FastSet[VehicleId]]
     byGrid: array[maxsize, array[maxsize, DoublyLinkedList[VehicleId]]]
     byHealth: array[HealthLevel, FastSet[VehicleId]]
+    byMyAerialCluster: seq[Cluster]
+    byMyGroundCluster: seq[Cluster]
+    byEnemyCluster: seq[Cluster]
     all: FastSet[VehicleId]
     selected: FastSet[VehicleId]
     aerials: FastSet[VehicleId]
@@ -43,9 +53,11 @@ from tables import initTable, `[]`, `[]=`, mgetOrPut, keys, del, contains, pairs
 from math import nextPowerOfTwo
 from lists import initDoublyLinkedList, DoublyLinkedList, append, remove, nodes
 from enhanced import fromVehicle, gridsize
-from clusterization import invalidate, clusterize
+from clusterization import clusterize
+from borders import obtainCenter, obtainBorders
 #from sets import initSet, `*`, `+`, `-`, contains, items, card, init, incl, excl
-from fastset import `*`, `+`, `-`, contains, items, card, incl, excl, clear
+from fastset import `*`, `+`, `-`, contains, items, card, incl, excl, clear,
+                    intersects
 
 converter toType(a: VehicleType): Conv =
   result = proc (self: Vehicles): FastSet[VehicleId] = self.byType[a]
@@ -76,24 +88,20 @@ proc resolve(self: Vehicles, ids: FastSet[VehicleId]): seq[EVehicle] =
 proc initVehicles(w: World, g: Game, p: Player): Vehicles =
   result.byId =
     initTable[VehicleId, EVehicle](w.newVehicles.len.nextPowerOfTwo)
-  #result.all.init(w.newVehicles.len.nextPowerOfTwo)
-  #result.selected.init()
-  #result.mine.init()
-  #result.aerials.init()
   result.byType = initTable[VehicleType, FastSet[VehicleId]](8)
+  result.byMyAerialCluster = newSeq[Cluster]()
+  result.byMyGroundCluster = newSeq[Cluster]()
+  result.byEnemyCluster = newSeq[Cluster]()
   for x in 0..<maxsize:
     for y in 0..<maxsize:
       result.byGrid[x][y] = initDoublyLinkedList[VehicleId]()
   for i in VehicleType.ARRV..VehicleType.TANK:
     result.byType[i] = FastSet[VehicleId]()
-  #for i in HealthLevel.low..HealthLevel.high():
-  #  result.byHealth[i] = initSet[VehicleId]()
   result.byGroup =
     initTable[Group, FastSet[VehicleId]](g.maxUnitGroup.nextPowerOfTwo())
   result.update(w, p.id)
 
 proc update(self: var Vehicles, w: World, myid: int64) =
-  #self.updated.init()
   self.updated.clear()
   for v in w.newVehicles:
     let vehicle = fromVehicle(v)
@@ -105,7 +113,6 @@ proc update(self: var Vehicles, w: World, myid: int64) =
       self.aerials.incl(id)
     if v.player_id == myid:
       self.mine.incl(id)
-      #self.byGroup.mgetOrPut(0, initSet[VehicleId]()).incl(id)
       self.byGroup.mgetOrPut(0, FastSet[VehicleId]()).incl(id)
     self.updated.incl(id)
     self.all.incl(id)
@@ -113,7 +120,6 @@ proc update(self: var Vehicles, w: World, myid: int64) =
     let id = vu.id.VehicleId
     let unit = self.byId[id]
     if vu.durability == 0:
-      # dead
       self.selected.excl(id)
       self.aerials.excl(id)
       self.mine.excl(id)
@@ -161,8 +167,37 @@ proc update(self: var Vehicles, w: World, myid: int64) =
       self.byId[id].groups = newgroups
       if vu.groups.len() > 0: self.byGroup[0].excl(id)
       else: self.byGroup[0].incl(id)
-  invalidate(self.updated)
-  let x = self.clusterize(self.all)
+  if w.tickIndex mod 10 == 0:
+    let enemyset = self.all - self.mine
+    if self.updated.intersects(enemyset):
+      let enemies = self.clusterize(enemyset)
+      self.byEnemyCluster.setLen(enemies.len())
+      for i, e in enemies.pairs():
+        let units = self.resolve(e)
+        let center = obtainCenter(units)
+        let vertices = obtainBorders(center, units)
+        self.byEnemyCluster[i] = (cluster: e, center: center,
+                                  vertices: vertices)
+    let mineaerial = self.mine * self.aerials
+    let mineground = self.mine - mineaerial
+    if self.updated.intersects(mineground):
+      let mine = self.clusterize(mineground)
+      self.byMyGroundCluster.setLen(mine.len())
+      for i, e in mine.pairs():
+        let units = self.resolve(e)
+        let center = obtainCenter(units)
+        let vertices = obtainBorders(center, units)
+        self.byMyGroundCluster[i] = (cluster: e, center: center,
+                                     vertices: vertices)
+    if self.updated.intersects(mineaerial):
+      let mine = self.clusterize(mineaerial)
+      self.byMyAerialCluster.setLen(mine.len())
+      for i, e in mine.pairs():
+        let units = self.resolve(e)
+        let center = obtainCenter(units)
+        let vertices = obtainBorders(center, units)
+        self.byMyAerialCluster[i] = (cluster: e, center: center,
+                                     vertices: vertices)
 
 proc inArea(self: Vehicles, area: Area): FastSet[VehicleId] =
   #result = initSet[VehicleId]()

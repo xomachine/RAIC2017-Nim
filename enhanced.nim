@@ -6,7 +6,7 @@ const maxsize* = (1024 div gridsize)
 type
   Group* = uint8
   VehicleId* = uint16
-  FacilityId* = uint16
+  FacilityId* = uint8
   EVehicle* = tuple
     id: int64
     sid: VehicleId

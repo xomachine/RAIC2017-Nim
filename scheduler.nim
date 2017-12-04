@@ -27,7 +27,6 @@ from analyze import Players
 from groupcounter import initGroupCounter
 from enhanced import Group
 from pbehavior import PBRType
-from production import initProduction
 from pbinitial import initInitial
 from formation import empty
 from model.facility_type import FacilityType
@@ -43,7 +42,6 @@ proc initScheduler(game: Game): Scheduler =
     initInitial(@[VehicleType.ARRV, VehicleType.IFV, VehicleType.TANK]))
   result.playerBehaviors.append(
     initInitial(@[VehicleType.FIGHTER, VehicleType.HELICOPTER]))
-  result.playerBehaviors.append(initProduction())
   result.groupCounter = initGroupCounter(game.maxUnitGroup.Group)
 
 proc tick(self: var Scheduler, ws: WorldState, m: var Move) =

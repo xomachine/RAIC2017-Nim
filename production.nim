@@ -15,7 +15,7 @@ from model.vehicle_type import VehicleType
 from model.facility_type import FacilityType
 from utils import Area
 from tables import `[]`
-from fastset import `*`, card, `-`, intersects
+from fastset import `*`, card, `-`, intersects, items
 
 var vehiclesPerLine: int = 0
 var vehiclesPerCol: int = 0
