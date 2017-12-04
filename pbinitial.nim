@@ -184,7 +184,13 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
     elif stagedone(2):
       # Dividing resulting squad by 2 and making formation for each part
       debug("Stage 2 done!")
-      let aarea = areaFromUnits(v.resolve(v.mine))
+      let uset =
+        if types.len == 3: v.mine - v.aerials
+        else: v.aerials * v.mine
+      let units = v.resolve(uset)
+      debug($types.len & ":Units to get area: " & $units.len())
+      let aarea = areaFromUnits(units)
+      debug($types.len & ":Full area: " & $aarea)
       var groups: array[2, Group]
       # to avoid illegal capture of gc
       for i in 0..<2:
@@ -192,23 +198,37 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
       proc every(i: int, pa: Area): ActionChain =
         let ngroup = groups[i]
         result = newSeq[Action]()
-        result.add(newSelection((left: 0.0, right:0.0, top:0.0, bottom:0.0)))
-        for i in types:
-          result.add(addToSelection(pa, i))
+        var act = true
+        for t in types:
+          if act == true:
+            result.add(newSelection(pa, t))
+            act = false
+          else:
+            result.add(addToSelection(pa, t))
         let selection = initSelection(ngroup, result)
+        debug("NewFormation for group: " & $ngroup)
+        debug("NewFormation for area: " & $pa)
         let theformation =
           if types[0].ord in flyers: newAerialFormation(selection)
           else: newGroundFormation(selection)
         formations.add(theformation)
         result.add(group(ngroup))
-      actionChains &= devide(aarea, 2, every)
+      actionChains &= devide(aarea, 2, every) & @[done(3)]
     elif formations.len() == 0 and stagedone(3):
       # All formations are created, so removing ourselves
       debug("Stage 3 done!")
-      return PBResult(kind: PBRType.addPBehavior, behavior: initProduction())
+      if types.len == 3:
+        # Production initiation only after grounds formed
+        return PBResult(kind: PBRType.addPBehavior, behavior: initProduction())
+      else:
+        return PBResult(kind: PBRType.removeMe)
     elif stagedone(4):
       debug("Stage 4 done!")
       return PBResult(kind: PBRType.removeMe)
+    debug($types.len() & ": ActionChains: " & $actionChains.len)
+    for i in actionChains:
+      debug("  Chainlen:" & $i.len())
+    debug($types.len() & ": Formations: " & $formations.len)
     if actionChains.len() > 0:
       return PBResult(kind: PBRType.addPBehavior,
                       behavior: initActionChain(actionChains.pop()))
