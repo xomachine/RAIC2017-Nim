@@ -3,7 +3,7 @@ from enhanced import Group
 
 proc initNuke*(): Behavior
 
-from analyze import WorldState, typenames
+from analyze import WorldState
 from behavior import BehaviorStatus
 from clusterization import clusterize
 from enhanced import EVehicle
@@ -16,21 +16,6 @@ from model.move import Move
 from model.game import Game
 from model.action_type import ActionType
 
-import macros
-macro constructVRangesByType(): untyped =
-  var variants = newSeq[NimNode]()
-  let game = !"game"
-  let name = !"getVisionRange"
-  for v in VehicleType.ARRV..VehicleType.TANK:
-    let fieldname = !(typenames[v.ord] & "VisionRange")
-    variants.add((quote do: `game`.`fieldname`))
-  let thetable = newTree(nnkBracket, variants)
-  quote do:
-    proc `name`(`game`: Game, u: EVehicle): float =
-      let a = `thetable`
-      a[u.thetype.ord]
-
-constructVRangesByType()
 proc initNuke(): Behavior =
   var target: Point
   var stopped = false
@@ -58,7 +43,7 @@ proc initNuke(): Behavior =
     for u in fi.units:
       let pu = (x: u.x, y: u.y)
       let sqdistance = pu.getSqDistance(target)
-      let vision = ws.game.getVisionRange(u)*0.8
+      let vision = ws.gparams.visionByType[u.thetype.ord]*0.8
       if sqdistance < vision * vision:
         m.vehicleId = u.id
         m.x = target.x

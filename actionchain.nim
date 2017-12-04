@@ -22,7 +22,7 @@ proc initActionChain(actions: ActionChain): PlayerBehavior =
     proc (ws: WorldState, gc: var GroupCounter, m: var Move): PBResult =
       while counter < actions.len():
         let status = actions[counter](ws, gc, m)
-        debug("Action " & $counter & " returned " & $status)
+        debug($actions.len() & ": Action " & $counter & " returned " & $status)
         case status
         of ActionStatus.skip:
           return PBResult(kind: PBRType.empty)

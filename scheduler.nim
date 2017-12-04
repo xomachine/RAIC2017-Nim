@@ -11,7 +11,7 @@ from pbehavior import PlayerBehavior
 from selection import Selection
 from groupcounter import GroupCounter
 
-const maxTicksWithoutCtxSwitch = 50
+const maxTicksWithoutCtxSwitch = 10
 
 type
   Scheduler* = tuple
@@ -64,9 +64,11 @@ proc tick(self: var Scheduler, ws: WorldState, m: var Move) =
       if m.action != ActionType.NONE:
         return
       inc(index)
+    #debug("All BP skipped actions on index: " & $index)
     var position = 0
     for acn in self.pool.nodes:
       if acn.value.empty(ws.vehicles):
+        debug("Removing empty formation: " & $acn.value)
         self.pool.remove(acn)
         continue
       acn.value.tick(ws, m)
@@ -74,10 +76,12 @@ proc tick(self: var Scheduler, ws: WorldState, m: var Move) =
         if position == 0:
           self.ctxSwitchTimer += 1
           if self.ctxSwitchTimer > maxTicksWithoutCtxSwitch:
+            debug("Formation switch required!")
             self.ctxSwitchTimer = 0
             self.pool.remove(acn)
             self.pool.append(acn)
         else:
+          debug("Formation switched to " & $acn.value)
           self.ctxSwitchTimer = 0
           self.pool.remove(acn)
           self.pool.prepend(acn)

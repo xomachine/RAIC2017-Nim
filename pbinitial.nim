@@ -9,7 +9,8 @@ from model.move import Move
 from actions import Action, newSelection, actmove, group, ungroup, ActionStatus,
                     addToSelection
 from actionchain import initActionChain, ActionChain
-from analyze import WorldState, flyers
+from analyze import WorldState
+from gparams import flyers
 from condactions import atMoveEnd
 from formation import newGroundFormation, newAerialFormation, Formation
 from enhanced import VehicleId, Group
@@ -121,10 +122,14 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
           var shiftline = -1
           for l in 0'u8..2:
             if perline[l].intersects(realtoshift):
+              debug("Shifting squad on line " & $l)
               shiftline = l
               break
+          debug("In first col detected: " & $percol[1].card)
+          debug("In target line detected: " & $perline[shiftline].card)
           let obstacle = percol[1] * perline[shiftline]
           if not obstacle.empty:
+            debug("Obstacle detected")
             let obstaclearea = areaFromUnits(v.resolve(obstacle))
             let oshift = (x: colstarts[targetcol]-colstarts[1], y: 0.0)
             actionChains.add(@[
@@ -205,7 +210,7 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
             act = false
           else:
             result.add(addToSelection(pa, t))
-        let selection = initSelection(ngroup, result)
+        let selection = initSelection(ngroup, nil)
         debug("NewFormation for group: " & $ngroup)
         debug("NewFormation for area: " & $pa)
         let theformation =

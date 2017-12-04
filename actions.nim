@@ -36,23 +36,23 @@ macro genSelectsNGroups(): untyped =
     let action = newIntLitNode(actions[i].ord)
     result.add quote do:
       proc `name`*(group: Group): Action =
-        proc innerproc(ws: WorldState, gc: var GroupCounter, m: var Move): ActionStatus =
+        proc r(ws: WorldState, gc: var GroupCounter, m: var Move): ActionStatus =
           m.action = `action`.ActionType
           m.group = group.int32
           ActionStatus.take
-        innerproc
+        r
     if i > 2: continue
     result.add quote do:
-      proc `name`*(area: Area, vtype: VehicleType = VehicleType.UNKNOWN): Action =
-        proc innerproc(ws: WorldState, gc: var GroupCounter, m: var Move): ActionStatus =
+      proc `name`*(a: Area, vt: VehicleType = VehicleType.UNKNOWN): Action =
+        proc r(ws: WorldState, gc: var GroupCounter, m: var Move): ActionStatus =
           m.action = `action`.ActionType
-          m.vehicleType = vtype
-          m.left = area.left
-          m.right = area.right
-          m.top = area.top
-          m.bottom = area.bottom
+          m.vehicleType = vt
+          m.left = a.left
+          m.right = a.right
+          m.top = a.top
+          m.bottom = a.bottom
           ActionStatus.take
-        innerproc
+        r
 
 genSelectsNGroups()
 

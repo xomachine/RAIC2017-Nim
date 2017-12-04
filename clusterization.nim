@@ -9,7 +9,7 @@ proc clusterize*(self: Vehicles, unitset: FastSet[VehicleId]): Clusters
 const thresh = 10
 const squaredthresh = thresh * thresh
 
-from tables import `[]`#, initTable, contains, `[]=`
+from tables import `[]`, contains
 from lists import items, initDoublyLinkedList, remove, append, nodes
 from model.unit import getSquaredDistanceTo
 from enhanced import EVehicle, maxsize
@@ -52,9 +52,10 @@ proc clusterize(self: Vehicles, unitset: FastSet[VehicleId]): Clusters =
         let cell = self.byGrid[gx][gy]
         #newcluster = newcluster + cell
         for nid in cell.items():
-          let dst = self.byId[nid].getSquaredDistanceTo(unit.x, unit.y)
-          if dst <= squaredthresh:
-            newcluster.incl(nid)
+          if nid in self.byId:
+            let dst = self.byId[nid].getSquaredDistanceTo(unit.x, unit.y)
+            if dst <= squaredthresh:
+              newcluster.incl(nid)
     # Checking and uniting intersecting clusters
     if newcluster.intersects(allclusters):
       for cn in clusters.nodes():

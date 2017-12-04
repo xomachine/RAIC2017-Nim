@@ -2,7 +2,8 @@ from pbehavior import PlayerBehavior
 
 proc initProduction*(): PlayerBehavior
 
-from analyze import WorldState, flyers
+from analyze import WorldState
+from gparams import flyers
 from selection import initSelection
 from formation import newGroundFormation, newAerialFormation
 from actions import newSelection, group, ActionStatus
@@ -23,6 +24,7 @@ var vehiclesPerFactory: int = 0
 proc initProduction(): PlayerBehavior =
   var flyermakers = 0
   var groundmakers = 0
+  var lastchanged = 0
   result.tick = proc(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult =
     if unlikely(vehiclesPerLine == 0):
       vehiclesPerLine =
@@ -70,7 +72,7 @@ proc initProduction(): PlayerBehavior =
           else:
             newGroundFormation(selection)
         return PBResult(kind: PBRType.addFormation, formation: theformation)
-      elif producted mod vehiclesPerLine == 0 and producted > 0:
+      elif producted mod vehiclesPerLine == 0 and producted > 0 and lastchanged != producted:
         # switch vehicles type
         case facility.vehicleType
         of VehicleType.IFV: m.vehicleType = VehicleType.ARRV
@@ -80,6 +82,7 @@ proc initProduction(): PlayerBehavior =
         else: continue
         m.action = ActionType.SETUP_VEHICLE_PRODUCTION
         m.facilityId = fid.int64
+        lastchanged = producted
         return
       elif facility.vehicleType != VehicleType.UNKNOWN:
         if ord(facility.vehicleType) in flyers:

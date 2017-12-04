@@ -6,7 +6,7 @@ from model.game import Game
 
 from analyze import WorldState, initWorldState, update
 from scheduler import Scheduler, tick, initScheduler
-#{.optimization: speed, checks:off.}
+{.optimization: speed, checks:off.}
 type MyStrategy* = object
   worldState: WorldState
   scheduler: Scheduler
@@ -25,8 +25,9 @@ proc move*(self: var MyStrategy, player: Player, world: World, game: Game,
     self.worldState = initWorldState(world, game, player)
   self.worldState.update(world)
   self.scheduler.tick(self.worldState, move)
-  if move.action != ActionType.NONE:
-    echo "Tick: ", world.tickIndex
-    echo move.action
-    echo move.x, " ", move.y
-    echo move.top, " ",  move.bottom
+#  when defined(stdebug):
+#    if move.action != ActionType.NONE:
+#      echo "Tick: ", world.tickIndex
+#      echo move.action
+#      echo move.x, " ", move.y
+#      echo move.top, " ",  move.bottom
