@@ -14,11 +14,15 @@ type
 proc areaFromUnits*(units: seq[PointConcept]): Area
 proc inArea*(unit: PointConcept, a: Area): bool
 proc getSqDistance*(u1, u2: PointConcept): float
+
+from strutils import split
+
 template debug*(v: string) =
   when defined(stdebug):
     const stdebug {.strdefine.}: string = "all"
+    const files = stdebug.split({','})
     const ii = instantiationInfo()
-    when stdebug == "all" or ii.filename == stdebug:
+    when stdebug == "all" or ii.filename in files:
       echo v
 
 proc getSqDistance(u1, u2: PointConcept): float =
