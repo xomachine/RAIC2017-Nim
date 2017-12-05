@@ -29,15 +29,21 @@ from selection import select, SelectionStatus
 from model.action_type import ActionType
 from tables import `[]`, contains
 from fastset import empty
+from fieldbehavior import initFieldBehaviors
+from collision import initCollider
 
 proc newGroundFormation(sel: Group): Formation =
   result.selection = sel
   result.pendingAction = -1
+  let fb = @[
+    initCapture(),
+    initCollider()
+  ]
   result.behaviors = @[
     initNukeAlert(),
     initTogetherBehavior(sel),
     initNuke(),
-    initCapture()
+    initFieldBehaviors(fb)
   ]
 proc newAerialFormation(sel: Group): Formation =
   result.selection = sel
