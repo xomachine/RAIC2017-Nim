@@ -1,11 +1,11 @@
 from model.move import Move
 from model.action_type import ActionType
 from utils import Point
-from selection import Selection
 from behavior import BehaviorStatus, Behavior
 from analyze import WorldState
+from enhanced import Group
 
-proc initTogetherBehavior*(holder: Selection): Behavior
+proc initTogetherBehavior*(holder: Group): Behavior
 
 from vehicles import resolve, toGroup
 from borders import obtainCenter, obtainBorders, area
@@ -15,7 +15,8 @@ from math import PI
 from tables import `[]`
 from fastset import intersects
 
-proc initTogetherBehavior(holder: Selection): Behavior =
+# TODO: unexpected rotation instead of scaling for second selected group
+proc initTogetherBehavior(holder: Group): Behavior =
   # fields (perfecly incapsulated!)
   var holder = holder
   var lastAngle = PI
@@ -51,7 +52,7 @@ proc initTogetherBehavior(holder: Selection): Behavior =
         debug("Scaling:" & $m.factor)
       else:
         counter -= 1
-    elif not ws.vehicles.updated.intersects(ws.vehicles.byGroup[holder.group]):
+    elif not ws.vehicles.updated.intersects(ws.vehicles.byGroup[holder]):
       let center = fi.center
       m.action = ActionType.ROTATE
       m.angle = lastAngle

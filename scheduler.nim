@@ -8,7 +8,6 @@ from analyze import WorldState
 from formation import Formation, tick
 from utils import Area, Point
 from pbehavior import PlayerBehavior
-from selection import Selection
 from groupcounter import GroupCounter
 
 const maxTicksWithoutCtxSwitch = 10

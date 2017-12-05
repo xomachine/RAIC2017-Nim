@@ -17,6 +17,7 @@ type
     of PBRType.addPBehavior:
       behavior*: PlayerBehavior
     else: discard
+  Action* = proc (ws: WorldState, gc: var GroupCounter, m: var Move): PBResult
   PlayerBehavior* = tuple
-    tick: proc (ws: WorldState, gc: var GroupCounter, m: var Move): PBResult
+    tick: Action
 

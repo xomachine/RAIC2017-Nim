@@ -8,7 +8,7 @@ const typenames = [
   "ifv",
   "tank"
 ]
-const flyers* = {1,2}
+const flyers*  = {1, 2}
 
 type GParams* = tuple
   effectiveness: array[5, array[5, float]]

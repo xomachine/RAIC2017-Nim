@@ -7,17 +7,16 @@ proc initInitial*(types: seq[VehicleType], v: Vehicles): PlayerBehavior
 from tables import `[]`
 from fastset import `*`, card, `+`, `-`, clear, FastSet, empty, `+=`, intersects
 from model.move import Move
-from actions import Action, newSelection, actmove, group, ungroup, ActionStatus,
-                    addToSelection
+from actions import newSelection, actmove, group, ungroup, addToSelection
 from actionchain import initActionChain, ActionChain
+from pbactions import addPBehavior, addFormation
 from analyze import WorldState
 from gparams import flyers
 from condactions import atMoveEnd
 from formation import newGroundFormation, newAerialFormation, Formation
 from enhanced import VehicleId, Group
 from groupcounter import GroupCounter, getFreeGroup
-from pbehavior import PBResult, PBRType
-from selection import initSelection
+from pbehavior import PBResult, PBRType, Action
 from vehicles import resolve, toType, toArea, inArea, `*`
 from utils import Area, Point, areaFromUnits, debug
 from production import initProduction
@@ -60,7 +59,6 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
   var actionChains = newSeq[ActionChain]()
   var stages: array[10, tuple[expected: int, done: int]]
   var stagecounter = 0
-  var formations = newSeq[Formation]()
   let squad = areaFromUnits(v.resolve(spawnArea * VehicleType.IFV))
   let squadWidth = squad.right - squad.left
   let colstarts = [hi, (hi + lo - squadWidth)/2, lo - squadWidth]
@@ -74,9 +72,9 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
       else: false
   proc done(stage: int): Action =
     stages[stage].expected += 1
-    proc inn(ws: WorldState, gc: var GroupCounter, m: var Move): ActionStatus =
+    proc inn(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult =
       stages[stage].done += 1
-      ActionStatus.next
+      PBResult(kind: PBRType.priority)
     return inn
   result.tick = proc(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult=
     let v = ws.vehicles
@@ -166,11 +164,7 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
             newSelection(pa, t),
             actmove(shift)
           ]
-        actionChains.add(devide(varea, 10, every) &
-                         @[
-                           atMoveEnd(vehs),
-                           done(1)
-                         ])
+        actionChains.add(devide(varea, 10, every) & @[atMoveEnd(vehs),done(1)])
     elif stagedone(1):
       # Moving each squad to central column
       debug("Stage 1 done!")
@@ -187,8 +181,9 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
     elif stagedone(2):
       # Dividing resulting squad by 2 and making formation for each part
       debug("Stage 2 done!")
+      let aerial = types[0].ord in flyers
       let uset =
-        if types.len == 3: v.mine - v.aerials
+        if not aerial: v.mine - v.aerials
         else: v.aerials * v.mine
       let units = v.resolve(uset)
       debug($types.len & ":Units to get area: " & $units.len())
@@ -208,33 +203,19 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
             act = false
           else:
             result.add(addToSelection(pa, t))
-        let selection = initSelection(ngroup, nil)
         debug("NewFormation for group: " & $ngroup)
         debug("NewFormation for area: " & $pa)
-        let theformation =
-          if types[0].ord in flyers: newAerialFormation(selection)
-          else: newGroundFormation(selection)
-        formations.add(theformation)
         result.add(group(ngroup))
+        result.add(addFormation(ngroup, aerial))
+        if not aerial:
+          result.add(addPBehavior(initProduction(ws.game)))
       actionChains &= devide(aarea, 2, every) & @[done(3)]
-    elif formations.len() == 0 and stagedone(3):
-      # All formations are created, so removing ourselves
-      debug("Stage 3 done!")
-      if types.len == 3:
-        # Production initiation only after grounds formed
-        return PBResult(kind: PBRType.addPBehavior,
-                        behavior: initProduction(ws.game))
-      else:
-        return PBResult(kind: PBRType.removeMe)
-    elif stagedone(4):
-      debug("Stage 4 done!")
+    elif actionChains.len() == 0 and stagedone(3):
+      debug("Stages done!")
       return PBResult(kind: PBRType.removeMe)
     debug($types.len() & ": ActionChains: " & $actionChains.len)
     for i in actionChains:
       debug("  Chainlen:" & $i.len())
-    debug($types.len() & ": Formations: " & $formations.len)
     if actionChains.len() > 0:
       return PBResult(kind: PBRType.addPBehavior,
                       behavior: initActionChain(actionChains.pop()))
-    if formations.len() > 0:
-      return PBResult(kind: PBRType.addFormation, formation: formations.pop())

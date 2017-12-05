@@ -5,10 +5,11 @@ proc initProduction*(g: Game): PlayerBehavior
 
 from analyze import WorldState
 from gparams import flyers
-from selection import initSelection
 from formation import newGroundFormation, newAerialFormation
-from actions import newSelection, group, ActionStatus
+from actions import newSelection, group
+from actionchain import initActionChain
 from pbehavior import PBResult, PBRType
+from pbactions import addFormation
 from vehicles import inArea
 from groupcounter import GroupCounter, getFreeGroup
 from enhanced import FacilityId
@@ -62,13 +63,13 @@ proc initProduction(g: Game): PlayerBehavior =
         m.facilityId = fid.int64
         m.vehicleType = VehicleType.UNKNOWN
         let newgroup = gc.getFreeGroup()
-        let selection = initSelection(newgroup, @[newSelection(farea)])
-        let theformation =
-          if facility.vehicleType.ord in flyers:
-            newAerialFormation(selection)
-          else:
-            newGroundFormation(selection)
-        return PBResult(kind: PBRType.addFormation, formation: theformation)
+        let ac = @[
+          newSelection(farea),
+          group(newgroup),
+          addFormation(newgroup, facility.vehicleType.ord in flyers)
+        ]
+        return PBResult(kind: PBRType.addPBehavior,
+                        behavior: initActionChain(ac))
       elif producted mod vehiclesPerLine == 0 and producted > 0 and
            (fid notin lastchanged or lastchanged[fid] != producted):
         # switch vehicles type
