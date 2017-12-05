@@ -82,8 +82,9 @@ proc resolve(self: Vehicles, ids: FastSet[VehicleId]): seq[EVehicle] =
   result = newSeq[EVehicle](ids.card)
   var i = 0
   for id in ids:
-    result[i] = self.byId[id]
-    inc(i)
+    if id in self.byId:
+      result[i] = self.byId[id]
+      inc(i)
 
 proc initVehicles(w: World, g: Game, p: Player): Vehicles =
   result.byId =
