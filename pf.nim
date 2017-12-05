@@ -19,6 +19,7 @@ type
     minimum: Intensity
     power: int
 
+proc normalize*(self: var Vector) {.inline.}
 proc attractionPoint*(p: Point): FieldDescriptor {.inline.}
 proc applyField*(self: var FieldGrid, descriptor: FieldDescriptor)
 proc applyFields*(self: var FieldGrid, descriptors: seq[FieldDescriptor])
@@ -45,8 +46,8 @@ template sqr[T: SomeNumber](a: T): T =
 proc gridFromPoint(p: Point): GridPoint {.inline.} =
   GridPoint(x: int(p.x / gridsize), y: int(p.y / gridsize))
 proc `+=`(a: var Vector, b: Vector) {.inline.} =
-  a.x = (a.x + b.x)/2
-  a.y = (a.y + b.y)/2
+  a.x = (a.x + b.x)
+  a.y = (a.y + b.y)
 
 proc attractionPoint(p: Point): FieldDescriptor =
   let gp = p.gridFromPoint()
@@ -54,34 +55,41 @@ proc attractionPoint(p: Point): FieldDescriptor =
     pointAttractiveField(p, gp)
   return desc
 
+proc normalize(self: var Vector) =
+  let factor = 1024/max(self.x.abs, self.y.abs)
+  #echo factor
+  #echo self.x, ":", self.y
+  self.x *= factor
+  self.y *= factor
+
 proc getVector(self: FieldGrid, p: Point): Vector =
   let gridpoint = gridFromPoint(p)
   let startx = max(gridpoint.x - 1, 0)
   let starty = max(gridpoint.y - 1, 0)
   let endx = min(gridpoint.x + 1, maxsize-1)
   let endy = min(gridpoint.y + 1, maxsize-1)
-  #const factor = 1024 / Intensity.high.int
-  #var y: float = 0
-  #var x: float = 0
-  #for j in starty..<endy:
-  #  for i in startx..<endx:
-  #    y += self.grid[j][i].float - self.grid[j+1][i].float
-  #    x += self.grid[j][i].float - self.grid[j][i+1].float
-  let y = self.grid[starty][gridpoint.x].float - self.grid[endy][gridpoint.x].float
-  let x = self.grid[gridpoint.y][startx].float - self.grid[gridpoint.y][endx].float
-  let d = max(abs(x),abs(y))
-  # Normalize vector
-  result.x = 1024*x/d
-  result.y = 1024*y/d
-  #debug("Resultx: " & $result.x)
-  #debug("Resulty: " & $result.y)
+  var y: float = 0
+  var x: float = 0
+  for j in starty..<endy:
+    for i in startx..<endx:
+      y += self.grid[j][i].float - self.grid[j+1][i].float
+      x += self.grid[j][i].float - self.grid[j][i+1].float
+  #let y = self.grid[starty][gridpoint.x].float - self.grid[endy][gridpoint.x].float
+  #let x = self.grid[gridpoint.y][startx].float - self.grid[gridpoint.y][endx].float
+  #echo("Resultx: " & $result.x)
+  #echo("Resulty: " & $result.y)
+  #echo self.grid[starty][gridpoint.x], "-", self.grid[endy][gridpoint.x]
+  #echo self.grid[gridpoint.y][startx], "-", self.grid[gridpoint.y][endx].float
+  result.x = x
+  result.y = y
 
 proc formationVector(self: FieldGrid, c: Point,
                      verticies: array[16, Vertex]): Vector =
   result = self.getVector(c)
-  #for v in verticies:
-  #  if v.distanceToCenter > 0:
-  #    result += self.getVector(v.point)
+  for v in verticies:
+    if v.distanceToCenter > 0:
+      result += self.getVector(v.point)
+  normalize(result)
 
 proc applyVector(m: var Move, v: Vector) =
   m.action = ActionType.MOVE
