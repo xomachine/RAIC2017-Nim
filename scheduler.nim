@@ -59,6 +59,7 @@ proc tick(self: var Scheduler, ws: WorldState, m: var Move) =
           self.playerBehaviors.prepend(pbn)
       of PBRType.addPBehavior:
         self.playerBehaviors.append(status.behavior)
+        debug("Added new behavior!")
       of PBRType.addFormation:
         self.pool.append(status.formation)
       else: discard
