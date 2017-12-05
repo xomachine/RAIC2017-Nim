@@ -36,7 +36,9 @@ proc initCapture(): Behavior =
         #debug($i & "'th cluster is skipped due to intersection with formation")
         #continue
         let remaining = fi.associatedClusters[i]
-        field.applyRepulsiveFormationField(remaining.center, remaining.vertices)
+        if remaining.units.len() > 0:
+          field.applyRepulsiveFormationField(remaining.center,
+                                             remaining.vertices)
       else:
         field.applyRepulsiveFormationField(c.center, c.vertices)
       #var dummy: FieldGrid

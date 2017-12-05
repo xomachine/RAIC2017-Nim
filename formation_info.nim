@@ -47,10 +47,10 @@ proc updateFormationInfo(self: Group, ws: WorldState, isAerial: bool): Formation
   for i, c in clusters.pairs():
     if c.cluster.intersects(uset):
       let remains = c.cluster - uset
+      var pi: PartInfo
       if not remains.empty:
-        var pi: PartInfo
         pi.units = ws.vehicles.resolve(remains)
         pi.center = obtainCenter(pi.units)
         pi.vertices = obtainBorders(pi.center, pi.units)
-        result.associatedClusters[i] = pi
+      result.associatedClusters[i] = pi
 
