@@ -16,7 +16,7 @@ from model.move import Move
 from model.action_type import ActionType
 from model.vehicle_type import VehicleType
 from model.facility_type import FacilityType
-from utils import Area
+from utils import Area, debug
 from tables import `[]`, initTable, contains, `[]=`
 from fastset import `*`, card, `-`, intersects, items
 
@@ -24,8 +24,8 @@ proc initProduction(g: Game): PlayerBehavior =
   var flyermakers = 0
   var groundmakers = 0
   var lastchanged = initTable[FacilityId, int]()
-  let vehiclesPerLine = g.facilityWidth.int div (2*g.vehicleRadius.int)
-  let vehiclesPerCol = g.facilityHeight.int div (2*g.vehicleRadius.int)
+  let vehiclesPerLine = (g.facilityWidth.int div g.vehicleRadius.int + 1) div 3
+  let vehiclesPerCol = (g.facilityHeight.int div g.vehicleRadius.int + 1) div 3
   let vehiclesPerFactory = vehiclesPerCol * vehiclesPerLine
   result.tick = proc(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult =
     let ungrouped = ws.vehicles.byGroup[0]
