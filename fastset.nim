@@ -71,7 +71,7 @@ proc `==`[T](a, b: FastSet[T]): bool =
 proc intersects[T](a, b: FastSet[T]): bool =
   when seqs:
     if a.data.isNil or b.data.isNil:
-      return true
+      return false
     let maxbyte = min(a.data.len, b.data.len) - 1
   else:
     let maxbyte = min(a.maxbyte, b.maxbyte)
