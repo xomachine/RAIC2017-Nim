@@ -16,7 +16,10 @@ proc inArea*(unit: PointConcept, a: Area): bool
 proc getSqDistance*(u1, u2: PointConcept): float
 template debug*(v: string) =
   when defined(stdebug):
-    echo v
+    const stdebug {.strdefine.}: string = "all"
+    const ii = instantiationInfo()
+    when stdebug == "all" or ii.filename == stdebug:
+      echo v
 
 proc getSqDistance(u1, u2: PointConcept): float =
   let dx = (u1.x - u2.x)
