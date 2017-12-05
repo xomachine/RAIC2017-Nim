@@ -27,7 +27,7 @@ type
     byType: Table[VehicleType, FastSet[VehicleId]]
     byId: Table[VehicleId, EVehicle]
     byGroup: Table[Group, FastSet[VehicleId]]
-    byGrid: array[maxsize, array[maxsize, DoublyLinkedList[VehicleId]]]
+    byGrid: array[maxsize, array[maxsize, FastSet[VehicleId]]]
     byHealth: array[HealthLevel, FastSet[VehicleId]]
     byMyAerialCluster: seq[Cluster]
     byMyGroundCluster: seq[Cluster]
@@ -93,9 +93,9 @@ proc initVehicles(w: World, g: Game, p: Player): Vehicles =
   result.byMyAerialCluster = newSeq[Cluster]()
   result.byMyGroundCluster = newSeq[Cluster]()
   result.byEnemyCluster = newSeq[Cluster]()
-  for x in 0..<maxsize:
-    for y in 0..<maxsize:
-      result.byGrid[x][y] = initDoublyLinkedList[VehicleId]()
+  #for x in 0..<maxsize:
+  #  for y in 0..<maxsize:
+  #    result.byGrid[x][y] = initDoublyLinkedList[VehicleId]()
   for i in VehicleType.ARRV..VehicleType.TANK:
     result.byType[i] = FastSet[VehicleId]()
   result.byGroup =
@@ -127,6 +127,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
       self.all.excl(id)
       self.byType[unit.thetype].excl(id)
       self.byId.del(id)
+      self.byGrid[unit.gridx][unit.gridy].excl(id)
       for g in self.byGroup.keys():
         self.byGroup[g].excl(id)
       continue
@@ -150,11 +151,8 @@ proc update(self: var Vehicles, w: World, myid: int64) =
         let gridx = vu.x.int div gridsize
         let gridy = vu.y.int div gridsize
         if gridx != unit.gridx or gridy != unit.gridy:
-          for nid in self.byGrid[unit.gridx][unit.gridy].nodes:
-            if nid.value == id:
-              self.byGrid[unit.gridx][unit.gridy].remove(nid)
-              break
-          self.byGrid[gridx][gridy].append(id)
+          self.byGrid[unit.gridx][unit.gridy].excl(id)
+          self.byGrid[gridx][gridy].incl(id)
           self.byId[id].gridx = gridx
           self.byId[id].gridy = gridy
       var newgroups: set[uint8]
