@@ -202,16 +202,19 @@ proc clear[T](a: var FastSet[T]) =
   a.reset()
 
 iterator items*[T](s: FastSet[T]): T =
-   var x = s.data
-   when seqs:
-     let maxbyte = x.len() - 1
-   else:
-     let maxbyte = s.maxbyte
-   for byten in 0..maxbyte:
-     while x[byten] != 0'u32:
-       let bitn = countTrailingZeroBits(x[byten])
-       yield (bitn + byten * 32).T
-       x[byten] = x[byten] xor (1'u32 shl bitn)
+  when seqs:
+    let maxbyte =
+      if s.data.isNil: -1
+      else: s.data.len() - 1
+  else:
+    let maxbyte = s.maxbyte
+  if maxbyte >= 0:
+    var x = s.data
+    for byten in 0..maxbyte:
+      while x[byten] != 0'u32:
+        let bitn = countTrailingZeroBits(x[byten])
+        yield (bitn + byten * 32).T
+        x[byten] = x[byten] xor (1'u32 shl bitn)
 when isMainModule:
   var a: FastSet[uint8]
   assert(a.empty())
