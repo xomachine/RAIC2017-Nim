@@ -1,6 +1,7 @@
 from pbehavior import PlayerBehavior
+from model.game import Game
 
-proc initProduction*(): PlayerBehavior
+proc initProduction*(g: Game): PlayerBehavior
 
 from analyze import WorldState
 from gparams import flyers
@@ -10,28 +11,23 @@ from actions import newSelection, group, ActionStatus
 from pbehavior import PBResult, PBRType
 from vehicles import inArea
 from groupcounter import GroupCounter, getFreeGroup
+from enhanced import FacilityId
 from model.move import Move
 from model.action_type import ActionType
 from model.vehicle_type import VehicleType
 from model.facility_type import FacilityType
 from utils import Area
-from tables import `[]`
+from tables import `[]`, initTable, contains, `[]=`
 from fastset import `*`, card, `-`, intersects, items
 
-var vehiclesPerLine: int = 0
-var vehiclesPerCol: int = 0
-var vehiclesPerFactory: int = 0
-proc initProduction(): PlayerBehavior =
+proc initProduction(g: Game): PlayerBehavior =
   var flyermakers = 0
   var groundmakers = 0
-  var lastchanged = 0
+  var lastchanged = initTable[FacilityId, int]()
+  let vehiclesPerLine = g.facilityWidth.int div (2*g.vehicleRadius.int)
+  let vehiclesPerCol = g.facilityHeight.int div (2*g.vehicleRadius.int)
+  let vehiclesPerFactory = vehiclesPerCol * vehiclesPerLine
   result.tick = proc(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult =
-    if unlikely(vehiclesPerLine == 0):
-      vehiclesPerLine =
-        ws.game.facilityWidth.int div (2*ws.game.vehicleRadius.int)
-      vehiclesPerCol =
-        ws.game.facilityHeight.int div (2*ws.game.vehicleRadius.int)
-      vehiclesPerFactory = vehiclesPerCol * vehiclesPerLine
     let ungrouped = ws.vehicles.byGroup[0]
     let mine_factories =
       ws.facilities.mine * ws.facilities.byType[FacilityType.VEHICLE_FACTORY]
@@ -48,7 +44,8 @@ proc initProduction(): PlayerBehavior =
       let in_facility = ws.vehicles.inArea(farea)
       let mine_in_facility = in_facility.intersects(ws.vehicles.mine)
       let producted = card(in_facility * ungrouped)
-      if mine_in_facility and facility.vehicleType == VehicleType.UNKNOWN:
+      #echo mine_in_facility
+      if facility.vehicleType == VehicleType.UNKNOWN and not mine_in_facility:
         # initial setup production
         m.action = ActionType.SETUP_VEHICLE_PRODUCTION
         m.facilityId = fid.int64
@@ -72,7 +69,8 @@ proc initProduction(): PlayerBehavior =
           else:
             newGroundFormation(selection)
         return PBResult(kind: PBRType.addFormation, formation: theformation)
-      elif producted mod vehiclesPerLine == 0 and producted > 0 and lastchanged != producted:
+      elif producted mod vehiclesPerLine == 0 and producted > 0 and
+           (fid notin lastchanged or lastchanged[fid] != producted):
         # switch vehicles type
         case facility.vehicleType
         of VehicleType.IFV: m.vehicleType = VehicleType.ARRV
@@ -82,7 +80,7 @@ proc initProduction(): PlayerBehavior =
         else: continue
         m.action = ActionType.SETUP_VEHICLE_PRODUCTION
         m.facilityId = fid.int64
-        lastchanged = producted
+        lastchanged[fid] = producted
         return
       elif facility.vehicleType != VehicleType.UNKNOWN:
         if ord(facility.vehicleType) in flyers:

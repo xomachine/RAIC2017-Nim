@@ -20,7 +20,7 @@ type
     playerBehaviors: DoublyLinkedList[PlayerBehavior]
     groupCounter: GroupCounter
 
-proc initScheduler*(game: Game): Scheduler
+proc initScheduler*(game: Game, ws: WorldState): Scheduler
 proc tick*(self: var Scheduler, ws: WorldState, m: var Move)
 
 from analyze import Players
@@ -35,13 +35,15 @@ from lists import initDoublyLinkedList, nodes, remove, prepend, append
 from tables import `[]`
 from utils import debug
 
-proc initScheduler(game: Game): Scheduler =
+proc initScheduler(game: Game, ws: WorldState): Scheduler =
   result.pool = initDoublyLinkedList[Formation]()
   result.playerBehaviors = initDoublyLinkedList[PlayerBehavior]()
   result.playerBehaviors.append(
-    initInitial(@[VehicleType.ARRV, VehicleType.IFV, VehicleType.TANK]))
+    initInitial(@[VehicleType.ARRV, VehicleType.IFV, VehicleType.TANK],
+                ws.vehicles))
   result.playerBehaviors.append(
-    initInitial(@[VehicleType.FIGHTER, VehicleType.HELICOPTER]))
+    initInitial(@[VehicleType.FIGHTER, VehicleType.HELICOPTER],
+                ws.vehicles))
   result.groupCounter = initGroupCounter(game.maxUnitGroup.Group)
 
 proc tick(self: var Scheduler, ws: WorldState, m: var Move) =

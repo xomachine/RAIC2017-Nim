@@ -21,8 +21,8 @@ proc initMyStrategy*(): MyStrategy =
 proc move*(self: var MyStrategy, player: Player, world: World, game: Game,
            move: var Move) =
   if world.tick_index == 0:
-    self.scheduler = initScheduler(game)
     self.worldState = initWorldState(world, game, player)
+    self.scheduler = initScheduler(game, self.worldState)
   self.worldState.update(world)
   self.scheduler.tick(self.worldState, move)
 #  when defined(stdebug):

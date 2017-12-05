@@ -1,7 +1,8 @@
 from pbehavior import PlayerBehavior
+from vehicles import Vehicles
 from model.vehicle_type import VehicleType
 
-proc initInitial*(types: seq[VehicleType]): PlayerBehavior
+proc initInitial*(types: seq[VehicleType], v: Vehicles): PlayerBehavior
 
 from tables import `[]`
 from fastset import `*`, card, `+`, `-`, clear, FastSet, empty, `+=`, intersects
@@ -55,11 +56,14 @@ proc devide(a: Area, parts: Natural, every: proc(i: int, pa: Area): seq[Action])
     let pa = (left: a.left, right: a.right, top: top, bottom: top+step)
     result &= every(i, pa)
 
-proc initInitial(types: seq[VehicleType]): PlayerBehavior =
+proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
   var actionChains = newSeq[ActionChain]()
   var stages: array[10, tuple[expected: int, done: int]]
   var stagecounter = 0
   var formations = newSeq[Formation]()
+  let squad = areaFromUnits(v.resolve(spawnArea * VehicleType.IFV))
+  let squadWidth = squad.right - squad.left
+  let colstarts = [hi, (hi + lo - squadWidth)/2, lo - squadWidth]
   proc stagedone(stage: int): bool =
     if stage != stagecounter: false
     else:
@@ -74,14 +78,8 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
       stages[stage].done += 1
       ActionStatus.next
     return inn
-  var squadWidth = -1.0
-  var colstarts = [0.0, 0.0, 0.0]
   result.tick = proc(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult=
     let v = ws.vehicles
-    if unlikely(squadWidth == -1.0):
-      let squad = areaFromUnits(v.resolve(spawnArea * VehicleType.IFV))
-      squadWidth = squad.right - squad.left
-      colstarts = [hi, (hi + lo - squadWidth)/2, lo - squadWidth]
     if ws.world.tickIndex == 0:
       # Placing squads one per column
       let nonmovables = v.byType[VehicleType.TANK] +
@@ -224,7 +222,8 @@ proc initInitial(types: seq[VehicleType]): PlayerBehavior =
       debug("Stage 3 done!")
       if types.len == 3:
         # Production initiation only after grounds formed
-        return PBResult(kind: PBRType.addPBehavior, behavior: initProduction())
+        return PBResult(kind: PBRType.addPBehavior,
+                        behavior: initProduction(ws.game))
       else:
         return PBResult(kind: PBRType.removeMe)
     elif stagedone(4):
