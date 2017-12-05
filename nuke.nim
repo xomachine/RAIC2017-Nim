@@ -39,6 +39,7 @@ proc initNuke(): Behavior =
       m.action = ActionType.MOVE
       m.x = 0.1
       m.y = 0.1
+      stopped = true
       return
     for u in fi.units:
       let pu = (x: u.x, y: u.y)
