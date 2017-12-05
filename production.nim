@@ -28,6 +28,8 @@ proc initProduction(g: Game): PlayerBehavior =
   let vehiclesPerLine = (g.facilityWidth.int div g.vehicleRadius.int + 1) div 3
   let vehiclesPerCol = (g.facilityHeight.int div g.vehicleRadius.int + 1) div 3
   let vehiclesPerFactory = vehiclesPerCol * vehiclesPerLine
+  #debug $vehiclesPerLine
+  #debug $vehiclesPerFactory
   result.tick = proc(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult =
     let ungrouped = ws.vehicles.byGroup[0]
     let mine_factories =
@@ -45,7 +47,13 @@ proc initProduction(g: Game): PlayerBehavior =
       let in_facility = ws.vehicles.inArea(farea)
       let mine_in_facility = in_facility.intersects(ws.vehicles.mine)
       let producted = card(in_facility * ungrouped)
-      #echo mine_in_facility
+      #debug "FAREA:", $farea
+      #debug "In facility total:", $card(in_facility)
+      #debug $mine_in_facility
+      #debug $fid & ": Produced:" & $producted
+      #debug $fid & ": Making:" & $facility.vehicleType
+      #if fid in lastchanged:
+      #  debug $fid & ": LastChanged:" & $lastchanged[fid]
       if facility.vehicleType == VehicleType.UNKNOWN and not mine_in_facility:
         # initial setup production
         m.action = ActionType.SETUP_VEHICLE_PRODUCTION
@@ -57,6 +65,9 @@ proc initProduction(g: Game): PlayerBehavior =
         else:
           m.vehicleType = VehicleType.IFV
         return
+      elif fid in lastchanged and lastchanged[fid] == producted:
+        # not so elegant but helps to avoid doubling this condition
+        discard
       elif producted == vehiclesPerFactory:
         # make formation setup flyers production
         m.action = ActionType.SETUP_VEHICLE_PRODUCTION
@@ -68,10 +79,11 @@ proc initProduction(g: Game): PlayerBehavior =
           group(newgroup),
           addFormation(newgroup, facility.vehicleType.ord in flyers)
         ]
+        debug("Adding behavior for group: " & $newgroup)
+        lastchanged[fid] = producted
         return PBResult(kind: PBRType.addPBehavior,
                         behavior: initActionChain(ac))
-      elif producted mod vehiclesPerLine == 0 and producted > 0 and
-           (fid notin lastchanged or lastchanged[fid] != producted):
+      elif (producted mod vehiclesPerLine) == 0 and producted > 0:
         # switch vehicles type
         case facility.vehicleType
         of VehicleType.IFV: m.vehicleType = VehicleType.ARRV
@@ -83,9 +95,10 @@ proc initProduction(g: Game): PlayerBehavior =
         m.facilityId = fid.int64
         lastchanged[fid] = producted
         return
-      elif facility.vehicleType != VehicleType.UNKNOWN:
+      if facility.vehicleType != VehicleType.UNKNOWN:
         if ord(facility.vehicleType) in flyers:
           inc(tmpflyermakers)
+        else:
           inc(tmpgroundmakers)
     flyermakers = tmpflyermakers
     groundmakers = tmpgroundmakers
