@@ -207,9 +207,11 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
         debug("NewFormation for area: " & $pa)
         result.add(group(ngroup))
         result.add(addFormation(ngroup, aerial))
-        if not aerial:
-          result.add(addPBehavior(initProduction(ws.game)))
-      actionChains &= devide(aarea, 2, every) & @[done(3)]
+      var chain = devide(aarea, 2, every)
+      if not aerial:
+        chain.add(addPBehavior(initProduction(ws.game)))
+      chain.add(done(3))
+      actionChains &= chain
     elif actionChains.len() == 0 and stagedone(3):
       debug("Stages done!")
       return PBResult(kind: PBRType.removeMe)
