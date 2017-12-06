@@ -10,7 +10,7 @@ from utils import Area
 from fastset import FastSet
 from pf import FieldGrid
 from borders import Vertex
-from utils import Point
+from utils import Point, debug
 
 const maxHealthRange = 4
 
@@ -110,6 +110,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
     self.byId[id] = vehicle
     self.byType[v.thetype].incl(id)
     self.byHealth[HealthLevel.high()].incl(id)
+    self.byGrid[vehicle.gridx][vehicle.gridy].incl(id)
     if v.aerial:
       self.aerials.incl(id)
     if v.player_id == myid:
@@ -170,6 +171,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
     let enemyset = self.all - self.mine
     if self.updated.intersects(enemyset):
       let enemies = self.clusterize(enemyset)
+      debug("Detected " & $enemies.len() & " enemy clusters")
       self.byEnemyCluster.setLen(enemies.len())
       for i, e in enemies.pairs():
         let units = self.resolve(e)
@@ -181,6 +183,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
     let mineground = self.mine - mineaerial
     if self.updated.intersects(mineground):
       let mine = self.clusterize(mineground)
+      debug("Detected " & $mine.len() & " my ground clusterss")
       self.byMyGroundCluster.setLen(mine.len())
       for i, e in mine.pairs():
         let units = self.resolve(e)
@@ -190,6 +193,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
                                      vertices: vertices)
     if self.updated.intersects(mineaerial):
       let mine = self.clusterize(mineaerial)
+      debug("Detected " & $mine.len() & " my aerial clusterss")
       self.byMyAerialCluster.setLen(mine.len())
       for i, e in mine.pairs():
         let units = self.resolve(e)
