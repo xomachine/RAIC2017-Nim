@@ -23,6 +23,7 @@ proc genGameField(game: NimNode, field: string, i, j: int): NimNode
   {.compileTime.}
 
 from model.vehicle_type import VehicleType
+from utils import debug
 
 macro envFactor(g: Game, r: untyped, name: static[string]): untyped =
   const envTypeName = ["Terrain", "Weather"]
@@ -79,3 +80,4 @@ proc getParams*(g: Game): GParams =
   envFactor(g, result.visionFactorsByEnv, "Vision")
   envFactor(g, result.stealthFactorsByEnv, "Stealth")
   envFactor(g, result.speedFactorsByEnv, "Speed")
+  debug($result)

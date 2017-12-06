@@ -16,13 +16,13 @@ from model.vehicle_type import VehicleType
 from model.move import Move
 from model.game import Game
 from model.action_type import ActionType
+from math import floor
 
 proc initNuke(): Behavior =
   var target: Point
-  var vid: int64
   var stopped = false
   let do_reset = proc() =
-    target = (x: 0'f64, y: 0'f64)
+    target = (x: -1'f64, y: -1'f64)
     stopped = false
   result.tick = proc(ws: WorldState, fi: FormationInfo): BehaviorStatus =
     let me = ws.players[Players.me]
@@ -35,32 +35,56 @@ proc initNuke(): Behavior =
     let sqVision = ws.game.fighterVisionRange * ws.game.fighterVisionRange
     for cluster in v.byEnemyCluster:
       let center = cluster.center
-      let distance = hcenter.getSqDistance(center)
-      if distance < sqVision:
-        debug("Found target:" & $center.x & ":" & $center.y)
-        for u in fi.units:
-          let pu = (x: u.x, y: u.y)
-          let sqdistance = pu.getSqDistance(center)
-          let is_flyer = u.thetype.ord in flyers
-          let celltype =
-            if is_flyer: ws.world.weatherByCellXY[int(u.x/32)][int(u.y/32)].ord
-            else: ws.world.terrainByCellXY[int(u.x/32)][int(u.y/32)].ord
-          let vision = ws.gparams.visionByType[u.thetype.ord] *
-                       ws.gparams.visionFactorsByEnv[int(is_flyer)][celltype]
-          if sqdistance < vision * vision:
-            vid = u.id
-            target = center
+      for vv in fi.vertices:
+        if vv.distanceToCenter == 0:
+          continue
+        let distance = vv.point.getSqDistance(center)
+        if distance < sqVision * 0.9:
+          target = center
+          if stopped:
+            return BehaviorStatus.actUnselected
+          else:
             return BehaviorStatus.act
+      let distance = hcenter.getSqDistance(center)
+      if distance < sqVision * 0.9:
+        target = center
+        if stopped:
+          return BehaviorStatus.actUnselected
+        else:
+          return BehaviorStatus.act
     return BehaviorStatus.inactive
   result.action = proc (ws: WorldState, fi: FormationInfo, m: var Move) =
     if not stopped:
+      debug("Stopping...")
       m.action = ActionType.MOVE
-      m.x = 0.001
-      m.y = 0.001
+      m.x = 0.0
+      m.y = 0.0
       stopped = true
+    elif target.x >= 0 and target.y >= 0:
+      for u in fi.units:
+        if u.durability == 0:
+          continue
+        let pu = (x: u.x, y: u.y)
+        let sqdistance = pu.getSqDistance(target)
+        let is_flyer = u.thetype.ord in flyers
+        let celltype =
+          if is_flyer: ws.world.weatherByCellXY[int(floor(u.x/32))][int(floor(u.y/32))].ord
+          else: ws.world.terrainByCellXY[int(floor(u.x/32))][int(floor(u.y/32))].ord
+        let vision = ws.gparams.visionByType[u.thetype.ord] *
+                     1#ws.gparams.visionFactorsByEnv[int(is_flyer)][celltype]
+        if sqdistance < vision * vision * 0.8:
+          debug("Distance**2: " & $sqdistance)
+          debug("Vision: " & $vision)
+          debug("Id: " & $u.id)
+          debug("Navigator: " & $pu)
+          debug("CellType: " & $celltype)
+          debug("NType:" & $ u.thetype)
+          m.action = ActionType.TACTICAL_NUCLEAR_STRIKE
+          m.vehicleId = u.id
+          m.x = target.x
+          m.y = target.y
+          debug("Nuking on: " & $target.x & ":" & $target.y & " via " & $u.id)
+      #do_reset()
     else:
-      m.action = ActionType.TACTICAL_NUCLEAR_STRIKE
-      m.vehicleId = vid
-      m.x = target.x
-      m.y = target.y
+      debug("No target for me!")
   result.reset = do_reset

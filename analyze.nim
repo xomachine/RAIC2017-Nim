@@ -31,6 +31,7 @@ from tables import `[]`, `[]=`, initTable, del, keys, contains, mgetOrPut
 from math import nextPowerOfTwo
 from macros import newStmtList, add, quote, `!`, newIntLitNode
 from gparams import getParams
+from utils import debug
 
 proc initWorldState(w: World, g: Game, p: Player): WorldState =
   result.players[Players.me] = p
@@ -40,6 +41,7 @@ proc initWorldState(w: World, g: Game, p: Player): WorldState =
   result.vehicles = initVehicles(w, g, p)
   result.facilities = initFacilities(w, p)
   result.gparams = getParams(g)
+  debug($result.gparams)
 
 proc update(self: var WorldState, w: World) =
   let me = self.players[Players.me].id

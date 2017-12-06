@@ -122,6 +122,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
     let id = vu.id.VehicleId
     let unit = self.byId[id]
     if vu.durability == 0:
+      self.updated.incl(id)
       self.selected.excl(id)
       self.aerials.excl(id)
       self.mine.excl(id)

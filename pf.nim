@@ -18,13 +18,16 @@ type
     maximum: Intensity
     minimum: Intensity
     power: int
+  PointField* = tuple
+    point: GridPoint
+    power: float
 
 proc normalize*(self: var Vector) {.inline.}
-proc attractionPoint*(p: Point): FieldDescriptor {.inline.}
+proc gridFromPoint*(p: Point): GridPoint {.inline.}
 proc applyField*(self: var FieldGrid, descriptor: FieldDescriptor)
-proc applyFields*(self: var FieldGrid, descriptors: seq[FieldDescriptor])
+proc applyFields*(self: var FieldGrid, descriptors: seq[PointField])
 proc applyVector*(m: var Move, v: Vector) {.inline.}
-proc pointAttractiveField(p, attractor: GridPoint): Intensity {.inline.}
+#proc pointAttractiveField(p, attractor: GridPoint): Intensity {.inline.}
 proc getVector*(self: FieldGrid, p: Point): Vector {.inline.}
 proc formationVector*(self: FieldGrid, c: Point,
                      verticies: array[16, Vertex]): Vector
@@ -39,21 +42,16 @@ proc `+`*(a, b: FieldGrid): FieldGrid
 from model.action_type import ActionType
 from tables import values
 from utils import debug
-from math import ln, log10, log2, sqrt
+from bitops import fastLog2
+from math import sqrt, log10
 
 template sqr[T: SomeNumber](a: T): T =
   a*a
-proc gridFromPoint(p: Point): GridPoint {.inline.} =
+proc gridFromPoint(p: Point): GridPoint =
   GridPoint(x: int(p.x / gridsize), y: int(p.y / gridsize))
 proc `+=`(a: var Vector, b: Vector) {.inline.} =
   a.x = (a.x + b.x)
   a.y = (a.y + b.y)
-
-proc attractionPoint(p: Point): FieldDescriptor =
-  let gp = p.gridFromPoint()
-  proc desc(p: GridPoint): Intensity =
-    pointAttractiveField(p, gp)
-  return desc
 
 proc normalize(self: var Vector) =
   let factor = 1024/max(self.x.abs, self.y.abs)
@@ -96,13 +94,13 @@ proc applyVector(m: var Move, v: Vector) =
   m.x = v.x
   m.y = v.y
 
-proc pointRepulsiveField(p, distractor: GridPoint): Intensity =
+template pointRepulsiveField(p, distractor: GridPoint): Intensity =
   let distance = (sqr(p.x - distractor.x) + sqr(p.y-distractor.y)).float
   if distance == 0: Intensity.high
   else: Intensity(Intensity.high.float / sqrt(distance))
-proc pointAttractiveField(p, attractor: GridPoint): Intensity =
+template pointAttractiveField*(p, attractor: GridPoint): Intensity =
   let distance = float(sqr(p.x - attractor.x) + sqr(p.y-attractor.y))
-  const maxdstln = (2*log10(sqrt(2*sqr(maxsize).float)))
+  const maxdstln = (2*log10(2*sqr(maxsize).float))
   if distance == 0: Intensity.low
   else: Intensity(Intensity.high.float*log10(distance)/maxdstln)
 
@@ -115,7 +113,7 @@ proc borderField(p: GridPoint): Intensity =
   min((sqr(max(abs(relativeToCenter.x) - xcutoff, 0)) +
        sqr(max(abs(relativeToCenter.y) - ycutoff, 0))), Intensity.high.int).Intensity
 
-proc applyFields(self: var FieldGrid, descriptors: seq[FieldDescriptor]) =
+proc applyFields(self: var FieldGrid, descriptors: seq[PointField]) =
   let sumpower = self.power + descriptors.len()
   let minimum = self.minimum.int
   let diff = self.maximum.int - minimum
@@ -124,9 +122,12 @@ proc applyFields(self: var FieldGrid, descriptors: seq[FieldDescriptor]) =
   self.minimum = Intensity.high()
   for y in 0..<maxsize:
     for x in 0..<maxsize:
-      var fieldpoint: int = 0
+      var fieldpoint: float = 0
       for d in descriptors:
-        fieldpoint += d(GridPoint(x:x,y:y)).int
+        if d.power > 0:
+          fieldpoint += pointRepulsiveField(GridPoint(x:x, y:y), d.point).float
+        else:
+          fieldpoint += pointAttractiveField(GridPoint(x:x, y:y), d.point).float
       self.grid[y][x] =
         Intensity((fieldpoint.float + factor *
                    float(self.grid[y][x].int - minimum))/
@@ -164,9 +165,8 @@ proc borderGrid(): FieldGrid =
 proc applyAttackField(self: var FieldGrid, center: Point,
                       vertices: array[16, Vertex]) =
   let centercell = center.gridFromPoint()
-  var desc: FieldDescriptor = proc(p: GridPoint): Intensity =
-    pointAttractiveField(p, centercell)
-  self.applyField(desc)
+  var descriptors = newSeq[PointField]()
+  descriptors.add((point: centercell, power: -1.0))
   var maxdst:float = 0
   var maxdstid = -1
   for i, v in vertices.pairs():
@@ -174,16 +174,13 @@ proc applyAttackField(self: var FieldGrid, center: Point,
       if v.distanceToCenter > maxdst:
         maxdst = v.distanceToCenter
         maxdstid = i
-      closureScope:
-        let cell = v.point.gridFromPoint()
-        desc = proc(p:GridPoint): Intensity =
-          pointAttractiveField(p, cell)
-      self.applyField(desc)
+      #let cell = v.point.gridFromPoint()
+      #descriptors.add((point: centercell, power: -0.5))
   # applying weakest point id twice to make it more attractive
-  let cell = vertices[maxdstid].point.gridFromPoint()
-  desc = proc(p:GridPoint): Intensity =
-    pointAttractiveField(p, cell)
-  self.applyField(desc)
+  if maxdstid > 0:
+    let cell = vertices[maxdstid].point.gridFromPoint()
+    descriptors.add((point: cell, power: -1.0))
+  self.applyFields(descriptors)
 
 proc applyRepulsiveFormationField(self: var FieldGrid, center: Point,
                                   vertices: array[16, Vertex]) =

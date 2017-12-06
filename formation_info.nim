@@ -10,6 +10,7 @@ type
     vertices: array[16, Vertex]
     units: seq[EVehicle]
   FormationInfo* = tuple
+    group: Group
     center: Point
     vertices: array[16, Vertex]
     units: seq[EVehicle]
@@ -33,6 +34,7 @@ proc getMaxSpeed(ws: WorldState, units: FastSet[VehicleId]): float =
       result = min(ws.gparams.speedByType[t.ord] * ws.gparams.speedFactorsByEnv[env][1+env], result)
 
 proc updateFormationInfo(self: Group, ws: WorldState, isAerial: bool): FormationInfo =
+  result.group = self
   let uset = ws.vehicles.byGroup[self]
   result.units = ws.vehicles.resolve(uset)
   if result.units.len() == 0:

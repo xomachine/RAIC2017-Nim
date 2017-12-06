@@ -22,17 +22,16 @@ proc genFacilityField(self: Facilities, myid: int64): FieldGrid
 
 from tables import initTable, `[]`, `[]=`, mgetOrPut, values, len
 from math import nextPowerOfTwo
-from pf import applyField, EdgeField, attractionPoint, applyFields,
-               FieldDescriptor
+from pf import applyField, EdgeField, PointField, applyFields, gridFromPoint
 from fastset import incl, excl
 
 proc genFacilityField(self: Facilities, myid: int64): FieldGrid =
   result = EdgeField
-  var descs = newSeqOfCap[FieldDescriptor](self.byId.len)
+  var descs = newSeqOfCap[PointField](self.byId.len)
   for f in self.byId.values:
     if f.ownerPlayerId != myid:
-      let p = (x: f.left+20, y: f.top+20)
-      descs.add(attractionPoint(p))
+      let p = (x: f.left+30, y: f.top+30)
+      descs.add((point: p.gridFromPoint, power: -1.0))
       #echo "Attraction point:", $p
       #result.applyField(attractionPoint(p))
       #var dummy: FieldGrid
