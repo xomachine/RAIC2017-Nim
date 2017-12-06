@@ -21,7 +21,7 @@ proc updateFormationInfo*(self: Group, ws: WorldState, isAerial: bool): Formatio
 
 from vehicles import resolve, toGroup
 from borders import obtainCenter, obtainBorders
-from fastset import intersects, empty, `-`, FastSet
+from fastset import intersects, empty, `-`, FastSet, `*`
 from tables import `[]`, initTable, `[]=`
 from model.vehicle_type import VehicleType
 from gparams import flyers
@@ -48,7 +48,9 @@ proc updateFormationInfo(self: Group, ws: WorldState, isAerial: bool): Formation
   result.associatedClusters = initTable[int, PartInfo]()
   for i, c in clusters.pairs():
     if c.cluster.intersects(uset):
-      let remains = c.cluster - uset
+      let remains =
+        if isAerial: (c.cluster - uset) * ws.vehicles.aerials
+        else: (c.cluster - uset) - ws.vehicles.aerials
       var pi: PartInfo
       if not remains.empty:
         pi.units = ws.vehicles.resolve(remains)
