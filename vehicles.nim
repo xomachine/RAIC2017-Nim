@@ -12,7 +12,7 @@ from pf import FieldGrid
 from borders import Vertex
 from utils import Point, debug
 
-const maxHealthRange = 4
+const maxHealthRange* = 4
 
 type
   HealthLevel* = 0..maxHealthRange
@@ -35,6 +35,7 @@ type
     all: FastSet[VehicleId]
     selected: FastSet[VehicleId]
     aerials: FastSet[VehicleId]
+    clusterUpdateRequired: FastSet[VehicleId]
 
 proc initVehicles*(w: World, g: Game, p: Player): Vehicles
 proc update*(self: var Vehicles, w: World, myid: int64)
@@ -57,7 +58,7 @@ from clusterization import clusterize
 from borders import obtainCenter, obtainBorders
 #from sets import initSet, `*`, `+`, `-`, contains, items, card, init, incl, excl
 from fastset import `*`, `+`, `-`, contains, items, card, incl, excl, clear,
-                    intersects
+                    intersects, `+=`
 
 converter toType(a: VehicleType): Conv =
   result = proc (self: Vehicles): FastSet[VehicleId] = self.byType[a]
@@ -104,6 +105,7 @@ proc initVehicles(w: World, g: Game, p: Player): Vehicles =
 
 proc update(self: var Vehicles, w: World, myid: int64) =
   self.updated.clear()
+  var updateRequired {.global.} = false
   for v in w.newVehicles:
     let vehicle = fromVehicle(v)
     let id = vehicle.sid
@@ -122,7 +124,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
     let id = vu.id.VehicleId
     let unit = self.byId[id]
     if vu.durability == 0:
-      self.updated.incl(id)
+      updateRequired = true
       self.selected.excl(id)
       self.aerials.excl(id)
       self.mine.excl(id)
@@ -168,9 +170,10 @@ proc update(self: var Vehicles, w: World, myid: int64) =
       self.byId[id].groups = newgroups
       if vu.groups.len() > 0: self.byGroup[0].excl(id)
       else: self.byGroup[0].incl(id)
+  self.clusterUpdateRequired += self.updated
   if w.tickIndex mod 10 == 0:
     let enemyset = self.all - self.mine
-    if self.updated.intersects(enemyset):
+    if updateRequired or self.clusterUpdateRequired.intersects(enemyset):
       let enemies = self.clusterize(enemyset)
       debug("Detected " & $enemies.len() & " enemy clusters")
       self.byEnemyCluster.setLen(enemies.len())
@@ -182,7 +185,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
                                   vertices: vertices)
     let mineaerial = self.mine * self.aerials
     let mineground = self.mine - mineaerial
-    if self.updated.intersects(mineground):
+    if updateRequired or self.clusterUpdateRequired.intersects(mineground):
       let mine = self.clusterize(mineground)
       debug("Detected " & $mine.len() & " my ground clusterss")
       self.byMyGroundCluster.setLen(mine.len())
@@ -192,7 +195,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
         let vertices = obtainBorders(center, units)
         self.byMyGroundCluster[i] = (cluster: e, center: center,
                                      vertices: vertices)
-    if self.updated.intersects(mineaerial):
+    if updateRequired or self.clusterUpdateRequired.intersects(mineaerial):
       let mine = self.clusterize(mineaerial)
       debug("Detected " & $mine.len() & " my aerial clusterss")
       self.byMyAerialCluster.setLen(mine.len())
@@ -202,6 +205,8 @@ proc update(self: var Vehicles, w: World, myid: int64) =
         let vertices = obtainBorders(center, units)
         self.byMyAerialCluster[i] = (cluster: e, center: center,
                                      vertices: vertices)
+    self.clusterUpdateRequired.clear()
+    updateRequired = false
 
 proc inArea(self: Vehicles, area: Area): FastSet[VehicleId] =
   #result = initSet[VehicleId]()
