@@ -1,3 +1,5 @@
+when not defined(stdebug):
+  {.optimization: speed, checks:off.}
 from model.action_type import ActionType
 from model.player import Player
 from model.world import World
@@ -6,7 +8,7 @@ from model.game import Game
 
 from analyze import WorldState, initWorldState, update
 from scheduler import Scheduler, tick, initScheduler
-{.optimization: speed, checks:off.}
+
 type MyStrategy* = object
   worldState: WorldState
   scheduler: Scheduler
