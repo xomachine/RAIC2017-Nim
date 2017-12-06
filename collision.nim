@@ -1,15 +1,18 @@
 from fieldbehavior import FieldBehavior
 
-proc initCollider*(): FieldBehavior
+proc initCollider*(aerial:bool): FieldBehavior
 
 from analyze import WorldState
 from formation_info import FormationInfo
 from pf import FieldGrid, applyRepulsiveFormationField
 from tables import contains, `[]`
 
-proc initCollider(): FieldBehavior =
+proc initCollider(aerial: bool): FieldBehavior =
   result.apply = proc(f: var FieldGrid, ws: WorldState, fi: FormationInfo) =
-    for i, c in ws.vehicles.byMyGroundCluster.pairs():
+    let coi =
+      if aerial:ws.vehicles.byMyAerialCluster
+      else:ws.vehicles.byMyGroundCluster
+    for i, c in coi.pairs():
       if i in fi.associatedClusters:
         #debug($i & "'th cluster is skipped due to intersection with formation")
         #continue

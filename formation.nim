@@ -29,15 +29,17 @@ from selection import select, SelectionStatus
 from model.action_type import ActionType
 from tables import `[]`, contains
 from fastset import empty
-from fieldbehavior import initFieldBehaviors
+from fieldbehavior import initFieldBehaviors, resetField
 from collision import initCollider
+from enemyfield import initEnemyField
 
 proc newGroundFormation(sel: Group): Formation =
   result.selection = sel
   result.pendingAction = -1
   let fb = @[
     initCapture(),
-    initCollider()
+    initCollider(false),
+    initEnemyField()
   ]
   result.behaviors = @[
     initNukeAlert(),
@@ -49,10 +51,16 @@ proc newAerialFormation(sel: Group): Formation =
   result.selection = sel
   result.pendingAction = -1
   result.aerial = true
+  let fb = @[
+    resetField(),
+    initCollider(true),
+    initEnemyField()
+  ]
   result.behaviors = @[
     initNukeAlert(),
     initTogetherBehavior(sel),
     initNuke(),
+    initFieldBehaviors(fb)
   ]
 
 proc empty(self: Formation, vehicles: Vehicles): bool =
@@ -63,9 +71,10 @@ proc tick(self: var Formation, ws: WorldState, m: var Move) =
   var resetFlag = false
   let finfo = self.selection.updateFormationInfo(ws, self.aerial)
   if self.pendingAction >= 0:
-    let behavior = self.behaviors[self.pendingAction]
-    self.pendingAction = -1
-    behavior.action(ws, finfo, m)
+    if self.selection.select(ws, m) == SelectionStatus.alreadyDone:
+      let behavior = self.behaviors[self.pendingAction]
+      self.pendingAction = -1
+      behavior.action(ws, finfo, m)
     if m.action != ActionType.NONE:
       return
   for i, b in self.behaviors.pairs():

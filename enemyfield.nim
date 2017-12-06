@@ -2,7 +2,7 @@ from fieldbehavior import FieldBehavior
 
 proc initEnemyField*(): FieldBehavior
 
-from analyze import WorldState
+from analyze import WorldState, Players
 from enhanced import VehicleId
 from formation_info import FormationInfo
 from fastset import FastSet, `*`, card, empty
@@ -29,11 +29,11 @@ proc calculate(ws: WorldState, mine, enemy: FastSet[VehicleId]): float =
   let enemyArrvSupport = (1+0.1*enemyByType[0])
   debug("MyArrvSupport: " & $myArrvSupport)
   debug("enemyArrvSupport: " & $enemyArrvSupport)
-  for t in VehicleType.FIGHTER..VehicleType.TANK:
+  for t in VehicleType.ARRV..VehicleType.TANK:
     let my = myByType[t.ord]
     if my == 0:
       continue
-    for et in VehicleType.FIGHTER..VehicleType.TANK:
+    for et in VehicleType.ARRV..VehicleType.TANK:
       let en = enemyByType[et.ord]
       if en == 0:
         continue
@@ -51,7 +51,8 @@ proc initEnemyField(): FieldBehavior =
     let mine = v.byGroup[fi.group]
     debug($fi.group & ": Enemy has " & $v.byEnemyCluster.len() & " groups.")
     for enemy in v.byEnemyCluster:
-      let eff = ws.calculate(mine, enemy.cluster)
+      let eff = ws.calculate(mine, enemy.cluster) + float(1000 *
+        int(ws.players[Players.me].remainingNuclearStrikeCooldownTicks == 0))
       debug($fi.group & ":   " & $enemy.center &
             ": Calculatied effectiveness: " & $eff)
       if eff > 0:
