@@ -25,7 +25,7 @@ from sequtils import toSeq
 #proc invalidate(updated: FastSet[VehicleId]) =
 #  cacheInValid += updated
 
-{.push checks:off,optimization:speed.}
+#{.push checks:off,optimization:speed.}
 
 proc clusterize(self: Vehicles, unitset: FastSet[VehicleId]): Clusters =
   let units = self.resolve(unitset)
@@ -42,12 +42,13 @@ proc clusterize(self: Vehicles, unitset: FastSet[VehicleId]): Clusters =
       continue
     var newcluster = FastSet[VehicleId]()
     newcluster.incl(id)
+    debug("Making new cluster for: " & $id)
     # Checking neighbour cells
     for gx in (unit.gridx-1)..(unit.gridx+1):
-      if gx notin 0..maxsize:
+      if gx notin 0..<maxsize:
         continue
       for gy in (unit.gridy-1)..(unit.gridy+1):
-        if gy notin 0..maxsize:
+        if gy notin 0..<maxsize:
           continue
         let cell = self.byGrid[gx][gy]
         #newcluster = newcluster + cell
@@ -55,14 +56,17 @@ proc clusterize(self: Vehicles, unitset: FastSet[VehicleId]): Clusters =
           if nid in self.byId:
             let dst = self.byId[nid].getSquaredDistanceTo(unit.x, unit.y)
             if dst <= squaredthresh:
+              debug("Adding to cluster: " & $nid)
               newcluster.incl(nid)
     # Checking and uniting intersecting clusters
     if newcluster.intersects(allclusters):
       for cn in clusters.nodes():
         let cluster = cn.value
         if cluster.intersects(newcluster):
+          debug("Merging cluster with existent")
           clusters.remove(cn)
           newcluster += cluster
+    debug("Finished cluster of len: " & $card(newcluster))
     clusters.append(newcluster)
     allclusters += newcluster
   result = newSeq[FastSet[VehicleId]]()
@@ -70,4 +74,4 @@ proc clusterize(self: Vehicles, unitset: FastSet[VehicleId]): Clusters =
     result.add(c)
   #cache[uc] = result
   #cacheInvalid -= unitset
-{.pop.}
+#{.pop.}
