@@ -189,9 +189,9 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
       debug($types.len & ":Units to get area: " & $units.len())
       let aarea = areaFromUnits(units)
       debug($types.len & ":Full area: " & $aarea)
-      var groups: array[2, Group]
+      var groups = newSeq[Group](types.len)
       # to avoid illegal capture of gc
-      for i in 0..<2:
+      for i in 0..<types.len:
         groups[i] = gc.getFreeGroup()
       proc every(i: int, pa: Area): ActionChain =
         let ngroup = groups[i]
@@ -207,7 +207,7 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
         debug("NewFormation for area: " & $pa)
         result.add(group(ngroup))
         result.add(addFormation(ngroup, aerial))
-      var chain = devide(aarea, 2, every)
+      var chain = devide(aarea, types.len, every)
       if not aerial:
         chain.add(addPBehavior(initProduction(ws.game)))
       chain.add(done(3))
