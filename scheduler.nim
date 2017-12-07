@@ -30,7 +30,8 @@ from pbinitial import initInitial
 from formation import empty
 from model.facility_type import FacilityType
 from model.vehicle_type import VehicleType
-from lists import initDoublyLinkedList, nodes, remove, prepend, append
+from lists import initDoublyLinkedList, nodes, remove, prepend, append,
+                  DoublyLinkedNode
 from tables import `[]`
 from utils import debug
 
@@ -68,13 +69,17 @@ proc tick(self: var Scheduler, ws: WorldState, m: var Move) =
       inc(index)
     #debug("All BP skipped actions on index: " & $index)
     var position = 0
+    var toappend = newSeq[DoublyLinkedNode[Formation]]()
     for acn in self.pool.nodes:
       if acn.value.empty(ws.vehicles):
         debug("Removing empty formation: " & $acn.value)
         self.pool.remove(acn)
         continue
       acn.value.tick(ws, m)
-      if m.action != ActionType.NONE:
+      if m.action == ActionType.NONE:
+        self.pool.remove(acn)
+        toappend.add(acn)
+      else:
         if position == 0:
           self.ctxSwitchTimer += 1
           if self.ctxSwitchTimer > maxTicksWithoutCtxSwitch:
@@ -89,3 +94,5 @@ proc tick(self: var Scheduler, ws: WorldState, m: var Move) =
           self.pool.prepend(acn)
         break
       position += 1
+    for acn in toappend:
+      self.pool.append(acn)
