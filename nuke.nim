@@ -34,24 +34,26 @@ proc initNuke(): Behavior =
       return BehaviorStatus.inactive
     let v = ws.vehicles
     let hcenter = fi.center
+    let sqNukeRadius = ws.game.tacticalNuclearStrikeRadius *
+                       ws.game.tacticalNuclearStrikeRadius
     let sqVision = ws.game.fighterVisionRange * ws.game.fighterVisionRange
-    #let vplusc = (distanceToCenter: 1.0, point: hcenter) & @(fi.vertices)
+    let vplusc = (distanceToCenter: 1.0, point: hcenter) & @(fi.vertices)
     debug("Iterating over " & $v.byEnemyCluster.len & " clusters...")
     for i, cluster in v.byEnemyCluster.pairs():
       let center = cluster.center
-     # for vv in vplusc:
-     #   if vv.distanceToCenter == 0:
-     #     continue
-     #   let distance = vv.point.getSqDistance(center)
-      let distance = hcenter.getSqDistance(center)
-      debug("Cluster " & $i & " has " & $(cluster.cluster.card) &
-            " units and sits " & $distance & " away")
-      if distance < sqVision * 0.9:
-        target = center
-        if stopped:
-          return BehaviorStatus.actUnselected
-        else:
-          return BehaviorStatus.act
+      for vv in vplusc:
+        if vv.distanceToCenter == 0:
+          continue
+        let distance = vv.point.getSqDistance(center)
+     # let distance = hcenter.getSqDistance(center)
+     # debug("Cluster " & $i & " has " & $(cluster.cluster.card) &
+     #       " units and sits " & $distance & " away")
+        if distance < sqVision * 0.9 and distance > sqNukeRadius:
+          target = center
+          if stopped:
+            return BehaviorStatus.actUnselected
+          else:
+            return BehaviorStatus.act
     do_reset()
     return BehaviorStatus.inactive
   result.action = proc (ws: WorldState, fi: FormationInfo, m: var Move) =
