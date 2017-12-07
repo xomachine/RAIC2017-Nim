@@ -5,7 +5,7 @@ proc initRepair*(): FieldBehavior
 from analyze import WorldState
 from clusterization import clusterize
 from formation_info import FormationInfo
-from pf import FieldGrid, applyFields, PointField, gridFromPoint
+from pf import FieldGrid, applyRepairFields, PointField, gridFromPoint
 from vehicles import maxHealthRange, resolve
 from model.vehicle_type import VehicleType
 from borders import obtainCenter
@@ -35,7 +35,7 @@ proc initRepair(): FieldBehavior =
       unitscounter[i] = units.len
       let center = obtainCenter(units)
       healPoints[i].point = center.gridFromPoint()
-      healPoints[i].power = min(-1.5, 3*damagedlen/fulllen)
+      healPoints[i].power = max(-5.0, min(-2.0, -3*damagedlen/fulllen))
     for i, ul in unitscounter.pairs:
       healPoints[i].power *= ul/maxunits
-    f.applyFields(healPoints)
+    f.applyRepairFields(healPoints)

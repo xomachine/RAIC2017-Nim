@@ -25,7 +25,8 @@ type
 proc normalize*(self: var Vector) {.inline.}
 proc gridFromPoint*(p: Point): GridPoint {.inline.}
 proc applyField*(self: var FieldGrid, descriptor: FieldDescriptor)
-proc applyFields*(self: var FieldGrid, descriptors: seq[PointField], attack: bool = false)
+proc applyFields*(self: var FieldGrid, descriptors: seq[PointField])
+proc applyRepairFields*(self: var FieldGrid, descriptors: seq[PointField])
 proc applyVector*(m: var Move, v: Vector) {.inline.}
 #proc pointAttractiveField(p, attractor: GridPoint): Intensity {.inline.}
 proc getVector*(self: FieldGrid, p: Point): Vector {.inline.}
@@ -100,19 +101,31 @@ template pointRepulsiveField(p, distractor: GridPoint): Intensity =
   else: Intensity(Intensity.high.float / distance)
 template pointAttractiveField*(p, attractor: GridPoint): Intensity =
   let distance = float(sqr(p.x - attractor.x) + sqr(p.y-attractor.y))
-  const maxdstln = (2*log10(2*sqr(maxsize).float))
-  if distance == 0: Intensity.low
-  else: Intensity(Intensity.high.float*log10(distance)/maxdstln)
+  #const maxdstln = (2*log10(2*sqr(maxsize).float))
+#  if distance == 0: Intensity.low
+#  else: Intensity(Intensity.high.float*log10(distance)/maxdstln)
+  Intensity(Intensity.high.float*distance/(4+distance))
+template repairField(p, rp: GridPoint): Intensity =
+  let distance = sqr(p.x - rp.x) + sqr(p.y-rp.y)
+  Intensity(Intensity.high.int*distance/(2*sqr(maxsize)))
 template attackField(p, enemy: GridPoint, eff: float): Intensity =
-  const safedst = sqr(128/16)
-  const maxdstln = (2*log10(2*sqr(maxsize).float))
-  const safeln = log10(safedst+1)/maxdstln
+  const safedst = 96/16
+  const safedstsq = sqr(safedst).int
+  #const maxdstln = (2*log10(2*sqr(maxsize).float))
+  #const safeln = log10(safedst+1)/maxdstln
+  const safeln = safedstsq/(128+128*safedst+safedstsq)
+  #const safeln = Intensity.high.int / 2
   let distance = float(sqr(p.x - enemy.x) + sqr(p.y-enemy.y))
-  if eff >= 0 or distance >= safedst:
-    Intensity(Intensity.high.float*log10(distance+1)/maxdstln)
+  if eff >= 0:
+    Intensity((Intensity.high.float*distance)/(16+eff*distance.sqrt+distance))
+  elif distance >= safedstsq:
+    #Intensity(Intensity.high.float*log10(distance+1)/maxdstln)
+    #Intensity.high() div 2
+    Intensity((Intensity.high.float*distance)/(128+64*distance.sqrt+distance))
   else:
-    Intensity(safeln + (1-safeln)*(cos(sqrt(distance/safedst)*PI) + 1)/2 * Intensity.high.float)
-    #Intensity(Intensity.high.float* (safedst + (distance*eff))/safedst)
+    Intensity(min(1,(cos(sqrt(distance)/safedst*PI)+1)/2*((1-eff)*1-safeln)+
+               safeln) * Intensity.high.float)
+#    Intensity(Intensity.high.float* (safedst.float + (distance.toFloat()*eff/2))/safedst.float)
 
 proc borderField(p: GridPoint): Intensity =
   const cutoff = maxsize div 16
@@ -145,8 +158,16 @@ proc applyAttackFields(self: var FieldGrid, descriptors: seq[PointField]) =
     (oldfield + fieldPoint)/sumpower.float
   self.power = sumpower
 
+proc applyRepairFields(self: var FieldGrid, descriptors: seq[PointField]) =
+  let sumpower = descriptors.len + self.power
+  withField(self):
+    var fieldPoint: float = 0
+    for d in descriptors:
+      fieldPoint += repairField(GridPoint(x:x, y:y), d.point).float * -d.power
+    (oldfield + fieldPoint)/sumpower.float
+  self.power = sumpower
 
-proc applyFields(self: var FieldGrid, descriptors: seq[PointField], attack: bool = false) =
+proc applyFields(self: var FieldGrid, descriptors: seq[PointField]) =
   let sumpower = self.power + descriptors.len()
   withField(self):
     var fieldpoint: float = 0
@@ -185,8 +206,14 @@ proc applyAttackField(self: var FieldGrid, center: Point,
         maxdst = v.distanceToCenter
         maxdstid = i
       let cell = v.point.gridFromPoint()
-      descriptors.add((point: cell, power: eff))
-      inc(amount)
+      var uniq = true
+      for c in descriptors:
+        if c.point == cell:
+          uniq = false
+          break
+      if uniq:
+        descriptors.add((point: cell, power: eff))
+        inc(amount)
   # applying weakest point id twice to make it more attractive
   for d in descriptors.mitems():
     d.power *= 1/amount
@@ -199,14 +226,20 @@ proc applyRepulsiveFormationField(self: var FieldGrid, center: Point,
                                   vertices: array[16, Vertex]) =
   let centercell = center.gridFromPoint()
   var points = newSeq[PointField]()
-  points.add((point: centercell, power: 3.0))
+  points.add((point: centercell, power: 2.0))
   var amount = 1
   for v in vertices:
     if v.distanceToCenter > 0:
       #closureScope:
       let cell = v.point.gridFromPoint()
-      points.add((point: cell, power: 3.0))
-      inc(amount)
+      var uniq = true
+      for c in points:
+        if c.point == cell:
+          uniq = false
+          break
+      if uniq:
+        points.add((point: cell, power: 1.0))
+        inc(amount)
   for d in points.mitems():
     d.power /= amount.float
   self.applyFields(points)
