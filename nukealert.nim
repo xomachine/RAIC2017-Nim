@@ -16,8 +16,8 @@ proc initNukeAlert(): Behavior =
   result.tick = proc (ws: WorldState, fi: FormationInfo): BehaviorStatus =
     let enemy = ws.players[Players.enemy]
     if enemy.nextNuclearStrikeTickIndex > 0:
-      debug("Nuke detected!")
       let epicenter = (x: enemy.nextNuclearStrikeX, y: enemy.nextNuclearStrikeY)
+      debug("Nuke detected in " & $epicenter)
       let uarea = areaFromUnits(fi.units)
       if epicenter.inArea(uarea):
         debug("Nuke on me!")
