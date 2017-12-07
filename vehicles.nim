@@ -136,29 +136,28 @@ proc update(self: var Vehicles, w: World, myid: int64) =
         self.byGroup[g].excl(id)
       continue
     elif unit.durability != vu.durability:
-      let tenmaximum = 10 / unit.maxDurability
       let healthstate =
-        HealthLevel(int(vu.durability.float*tenmaximum) div maxHealthRange)
+        HealthLevel(int(vu.durability/unit.maxDurability) * maxHealthRange)
       let oldhealthstate =
-        HealthLevel(int(unit.durability.float*tenmaximum) div maxHealthRange)
+        HealthLevel(int(unit.durability/unit.maxDurability) * maxHealthRange)
       if healthstate != oldhealthstate:
         self.byHealth[oldhealthstate].excl(id)
         self.byHealth[healthstate].incl(id)
       self.byId[id].durability = vu.durability
+    if unit.x != vu.x or unit.y != vu.y:
+      self.updated.incl(id)
+      self.byId[id].x = vu.x
+      self.byId[id].y = vu.y
+      let gridx = vu.x.int div gridsize
+      let gridy = vu.y.int div gridsize
+      if gridx != unit.gridx or gridy != unit.gridy:
+        self.byGrid[unit.gridx][unit.gridy].excl(id)
+        self.byGrid[gridx][gridy].incl(id)
+        self.byId[id].gridx = gridx
+        self.byId[id].gridy = gridy
     if unit.player_id == myid:
       if vu.selected: self.selected.incl(id)
       else: self.selected.excl(id)
-      if unit.x != vu.x or unit.y != vu.y:
-        self.updated.incl(id)
-        self.byId[id].x = vu.x
-        self.byId[id].y = vu.y
-        let gridx = vu.x.int div gridsize
-        let gridy = vu.y.int div gridsize
-        if gridx != unit.gridx or gridy != unit.gridy:
-          self.byGrid[unit.gridx][unit.gridy].excl(id)
-          self.byGrid[gridx][gridy].incl(id)
-          self.byId[id].gridx = gridx
-          self.byId[id].gridy = gridy
       var newgroups: set[uint8]
       for g in vu.groups:
         newgroups.incl(g.Group)
