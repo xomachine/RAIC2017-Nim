@@ -40,7 +40,7 @@ proc initTogetherBehavior(holder: Group): Behavior =
       reset()
       return BehaviorStatus.inactive
   result.action = proc(ws: WorldState, fi: FormationInfo, m: var Move) =
-    const maxcount = 20
+    const maxcount = 5
     if lastAction != ActionType.SCALE:
       if counter <= 0:
         let center = fi.center
