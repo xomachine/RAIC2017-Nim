@@ -3,9 +3,11 @@ from borders import Vertex
 from enhanced import EVehicle, Group, VehicleId
 from analyze import WorldState
 from tables import Table
+from fastset import FastSet
 
 type
   PartInfo* = tuple
+    cluster: FastSet[VehicleId]
     center: Point
     vertices: array[16, Vertex]
     units: seq[EVehicle]
@@ -53,6 +55,7 @@ proc updateFormationInfo(self: Group, ws: WorldState, isAerial: bool): Formation
         else: (c.cluster - uset) - ws.vehicles.aerials
       var pi: PartInfo
       if not remains.empty:
+        pi.cluster = remains
         pi.units = ws.vehicles.resolve(remains)
         pi.center = obtainCenter(pi.units)
         pi.vertices = obtainBorders(pi.center, pi.units)
