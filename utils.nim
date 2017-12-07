@@ -23,7 +23,7 @@ template debug*(v: string) =
     const files = stdebug.split({','})
     const ii = instantiationInfo()
     when stdebug == "all" or ii.filename in files:
-      echo ii.filename, ": ", v
+      stderr.writeLine(ii.filename & ": " & v)
 
 proc getSqDistance(u1, u2: PointConcept): float =
   let dx = (u1.x - u2.x)
