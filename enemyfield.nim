@@ -25,8 +25,8 @@ proc calculate(ws: WorldState, mine, enemy: FastSet[VehicleId]): float =
       let relativeFactor = (i+1)/bhlen
       myByType[t.ord] += card(mine * twithhs).float * relativeFactor
       enemyByType[t.ord] += card(enemy * twithhs).float * relativeFactor
-  let myArrvSupport = (1+0.02*myByType[0])
-  let enemyArrvSupport = (1+0.02*enemyByType[0])
+  let myArrvSupport = (1+0.1*myByType[0])
+  let enemyArrvSupport = (1+0.1*enemyByType[0])
   debug("MyArrvSupport: " & $myArrvSupport)
   debug("enemyArrvSupport: " & $enemyArrvSupport)
   for t in VehicleType.ARRV..VehicleType.TANK:
@@ -44,8 +44,8 @@ proc calculate(ws: WorldState, mine, enemy: FastSet[VehicleId]): float =
                   enemyArrvSupport
       debug("My " & $myByType[t.ord] & " of " & $t & " vs enemys " &
             $enemyByType[et.ord] & " of " & $et & " has advantage: " &
-            $(adv/sum))
-      result += adv/sum
+            $(adv))
+      result += adv
 
 proc initEnemyField(): FieldBehavior =
   result.apply = proc (f: var FieldGrid, ws: WorldState, fi: FormationInfo) =
@@ -64,7 +64,18 @@ proc initEnemyField(): FieldBehavior =
         maxeff = abs(eff)
     for i, enemy in v.byEnemyCluster.pairs():
       let eff = effs[i]
-#      if eff > 0:
-      f.applyAttackField(enemy.center, enemy.vertices, eff/maxeff)
-#      else:
-#        f.applyRepulsiveFormationField(enemy.center, enemy.vertices)
+      if eff > 50:
+        f.applyAttackField(enemy.center, enemy.vertices, 2.0)
+      elif eff > 10:
+        f.applyAttackField(enemy.center, enemy.vertices, 1.0)
+      elif eff > 0:
+        f.applyAttackField(enemy.center, enemy.vertices, 0.5)
+      elif eff < -50:
+        #f.applyRepulsiveFormationField(enemy.center, enemy.vertices)
+        f.applyAttackField(enemy.center, enemy.vertices, -2.0)
+      elif eff < -10:
+        #f.applyRepulsiveFormationField(enemy.center, enemy.vertices)
+        f.applyAttackField(enemy.center, enemy.vertices, -1.0)
+      else:
+        #f.applyRepulsiveFormationField(enemy.center, enemy.vertices)
+        f.applyAttackField(enemy.center, enemy.vertices, -0.5)
