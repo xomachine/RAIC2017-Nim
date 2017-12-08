@@ -7,6 +7,7 @@ from model.move import Move
 proc actmove*(shift: Point, maxspeed: float64 = 0): Action
 proc scale*(center: Point, factor, maxspeed: float64 = 0): Action
 proc rotate*(center: Point, angle, maxspeed: float64 = 0): Action
+proc nuke*(target: Point, vehicle: int64): Action
 
 from model.action_type import ActionType
 from model.vehicle_type import VehicleType
@@ -72,5 +73,13 @@ proc rotate(center: Point, angle, maxspeed: float64 = 0): Action =
     m.y = center.y
     m.angle = angle
     m.maxAngularSpeed = maxspeed
+    PBResult(kind: PBRType.priority)
+  return inner
+proc nuke(target: Point, vehicle: int64): Action =
+  proc inner(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult =
+    m.action = ActionType.TACTICAL_NUCLEAR_STRIKE
+    m.x = target.x
+    m.y = target.y
+    m.vehicleId = vehicle
     PBResult(kind: PBRType.priority)
   return inner
