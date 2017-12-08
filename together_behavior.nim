@@ -28,7 +28,7 @@ proc initTogetherBehavior(holder: Group): Behavior =
     counter = 0
   result.reset = reset
   result.tick = proc(ws: WorldState, finfo: FormationInfo): BehaviorStatus =
-    const criticalDensity = 1/10
+    const criticalDensity = 1/9
     if finfo.units.len() == 0:
       return BehaviorStatus.inactive
     let area = area(finfo.vertices)
