@@ -97,8 +97,12 @@ proc applyVector(m: var Move, v: Vector) =
 
 template pointRepulsiveField(p, distractor: GridPoint): Intensity =
   let distance = (sqr(p.x - distractor.x) + sqr(p.y-distractor.y)).float.sqrt
-  if distance == 0: Intensity.high
-  else: Intensity(Intensity.high.float / distance)
+  const safedst = 96/16
+  const safeln = 1/(safedst+1)
+  if distance < 0: Intensity.high
+    #Intensity(min(1,(cos(sqrt(distance)/safedst*PI)+1)/2*(1-safeln)+
+    #          safeln) * Intensity.high.float)
+  else: Intensity(Intensity.high.float / (distance))
 template pointAttractiveField*(p, attractor: GridPoint): Intensity =
   let distance = float(sqr(p.x - attractor.x) + sqr(p.y-attractor.y))
   #const maxdstln = (2*log10(2*sqr(maxsize).float))
@@ -113,15 +117,17 @@ template attackField(p, enemy: GridPoint, eff: float): Intensity =
   const safedstsq = sqr(safedst).int
   #const maxdstln = (2*log10(2*sqr(maxsize).float))
   #const safeln = log10(safedst+1)/maxdstln
-  const safeln = safedstsq/(128+128*safedst+safedstsq)
+  #const safeln = safedstsq/(128+128*safedst+safedstsq)
   #const safeln = Intensity.high.int / 2
+  const safeln = safedst/(2*sqr(maxsize))
   let distance = float(sqr(p.x - enemy.x) + sqr(p.y-enemy.y))
   if eff >= 0:
     Intensity((Intensity.high.float*distance)/(16+eff*distance.sqrt+distance))
   elif distance >= safedstsq:
+    Intensity(Intensity.high.float*distance/(2*sqr(maxsize)))
     #Intensity(Intensity.high.float*log10(distance+1)/maxdstln)
     #Intensity.high() div 2
-    Intensity((Intensity.high.float*distance)/(128+64*distance.sqrt+distance))
+    #Intensity((Intensity.high.float*distance)/(128+64*distance.sqrt+distance))
   else:
     Intensity(min(1,(cos(sqrt(distance)/safedst*PI)+1)/2*((1-eff)*1-safeln)+
                safeln) * Intensity.high.float)
@@ -170,14 +176,14 @@ proc applyRepairFields(self: var FieldGrid, descriptors: seq[PointField]) =
 proc applyFields(self: var FieldGrid, descriptors: seq[PointField]) =
   let sumpower = self.power + descriptors.len()
   withField(self):
-    var fieldpoint: float = 0
+    var fieldpoint: float64 = 0
     for d in descriptors:
-      if d.power > 0:
+      if d.power >= 0:
         fieldpoint +=
           pointRepulsiveField(GridPoint(x:x, y:y), d.point).float * d.power
       else:
         fieldpoint +=
-          pointAttractiveField(GridPoint(x:x, y:y), d.point).float * -d.power
+          -pointAttractiveField(GridPoint(x:x, y:y), d.point).float * d.power
     (oldfield + fieldpoint)/sumpower.float
   self.power = sumpower
 
@@ -226,7 +232,7 @@ proc applyRepulsiveFormationField(self: var FieldGrid, center: Point,
                                   vertices: array[16, Vertex]) =
   let centercell = center.gridFromPoint()
   var points = newSeq[PointField]()
-  points.add((point: centercell, power: 2.0))
+  points.add((point: centercell, power: 4.0))
   var amount = 1
   for v in vertices:
     if v.distanceToCenter > 0:
@@ -238,7 +244,7 @@ proc applyRepulsiveFormationField(self: var FieldGrid, center: Point,
           uniq = false
           break
       if uniq:
-        points.add((point: cell, power: 1.0))
+        points.add((point: cell, power: 2.0))
         inc(amount)
   for d in points.mitems():
     d.power /= amount.float
