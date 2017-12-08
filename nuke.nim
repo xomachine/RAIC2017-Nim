@@ -10,13 +10,14 @@ from enhanced import EVehicle
 from gparams import flyers
 from vehicles import resolve, toGroup
 from utils import Point, getSqDistance, debug
-from fastset import `-`, card
+from fastset import `-`, card, intersects
 from formation_info import FormationInfo
 from model.vehicle_type import VehicleType
 from model.move import Move
 from model.game import Game
 from model.action_type import ActionType
 from math import floor
+from tables import `[]`
 
 proc initNuke(): Behavior =
   var target: Point
@@ -50,7 +51,8 @@ proc initNuke(): Behavior =
      #       " units and sits " & $distance & " away")
         if distance < sqVision * 0.9 and distance > sqNukeRadius:
           target = center
-          if stopped:
+          if stopped or not v.updated.intersects(v.byGroup[fi.group]):
+            stopped = true
             return BehaviorStatus.actUnselected
           else:
             return BehaviorStatus.act
@@ -59,9 +61,10 @@ proc initNuke(): Behavior =
   result.action = proc (ws: WorldState, fi: FormationInfo, m: var Move) =
     if not stopped:
       debug("Stopping...")
-      m.action = ActionType.MOVE
-      m.x = 0.01
-      m.y = 0.01
+      m.action = ActionType.SCALE
+      m.x = fi.center.x
+      m.y = fi.center.y
+      m.factor = 1
       stopped = true
     elif target.x >= 0 and target.y >= 0:
       for u in fi.units:
@@ -74,8 +77,8 @@ proc initNuke(): Behavior =
           if is_flyer: ws.world.weatherByCellXY[int(floor(u.x/32))][int(floor(u.y/32))].ord
           else: ws.world.terrainByCellXY[int(floor(u.x/32))][int(floor(u.y/32))].ord
         let vision = ws.gparams.visionByType[u.thetype.ord] *
-                     1#ws.gparams.visionFactorsByEnv[int(is_flyer)][celltype]
-        if sqdistance < vision * vision * 0.8:
+                     ws.gparams.visionFactorsByEnv[int(is_flyer)][celltype]
+        if sqdistance < vision * vision:
           debug("Distance**2: " & $sqdistance)
           debug("Vision: " & $vision)
           debug("Id: " & $u.id)
@@ -87,6 +90,7 @@ proc initNuke(): Behavior =
           m.x = target.x
           m.y = target.y
           debug("Nuking on: " & $target.x & ":" & $target.y & " via " & $u.id)
+          return
       #do_reset()
     else:
       debug("No target for me!")
