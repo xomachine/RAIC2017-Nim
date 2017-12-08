@@ -39,3 +39,56 @@ proc initRepair(): FieldBehavior =
     for i, ul in unitscounter.pairs:
       healPoints[i].power *= ul/maxunits
     f.applyRepairFields(healPoints)
+
+from behavior import Behavior, BehaviorStatus
+from model.move import Move
+from model.action_type import ActionType
+
+proc initRepairBh*(): Behavior =
+  var tgridx = -1
+  var tgridy = -1
+  var target: Point
+  proc doreset() =
+    tgridx = -1
+    tgridy = -1
+  result.reset = doreset
+  result.tick = proc (ws: WorldState, fi: FormationInfo): BehaviorStatus =
+    let v = ws.vehicles
+    let damaged = v.byGroup[fi.group] - v.byHealth[maxHealthRange]
+    debug("FH: " & $card(v.byHealth[maxHealthRange]))
+    if damaged.empty:
+      doreset()
+      return BehaviorStatus.inactive
+    elif damaged.card/fi.units.len > 0.5:
+      let arrvs = v.clusterize(v.byType[VehicleType.ARRV] * v.mine)
+      #let damagedlen = card(damaged)
+      #let fulllen = fi.units.len()
+      var maxunits = 0
+      for i, arrv in arrvs.pairs():
+        let units = v.resolve(arrv)
+        let center = obtainCenter(units)
+        if maxunits < units.len():
+          maxunits = units.len()
+          target = center
+      if maxunits > 0:
+        let gridx = int(target.x / 16)
+        let gridy = int(target.y / 16)
+        if gridx != tgridx or gridy != tgridy:
+          tgridx = gridx
+          tgridy = gridy
+          return BehaviorStatus.act
+    else:
+      doreset()
+      return BehaviorStatus.inactive
+    let gridx = int(fi.center.x / 16)
+    let gridy = int(fi.center.y / 16)
+    if gridx == tgridx and gridy == tgridy:
+      return BehaviorStatus.inactive
+    else:
+      return BehaviorStatus.hold
+  result.action = proc(ws: WorldState, fi: FormationInfo, m: var Move) =
+    m.action = ActionType.MOVE
+    m.x = target.x - fi.center.x
+    m.y = target.y - fi.center.y
+    tgridx = int(target.x / 16)
+    tgridy = int(target.y / 16)
