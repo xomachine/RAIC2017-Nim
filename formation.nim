@@ -32,7 +32,7 @@ from fastset import empty
 from fieldbehavior import initFieldBehaviors, resetField
 from collision import initCollider
 from enemyfield import initEnemyField
-from repair import initRepair
+from repair import initRepair, initRepairBh
 
 proc newGroundFormation(sel: Group): Formation =
   result.selection = sel
@@ -61,6 +61,7 @@ proc newAerialFormation(sel: Group): Formation =
   result.behaviors = @[
     initNukeAlert(),
     initNuke(),
+    initRepairBh(),
     initTogetherBehavior(sel),
     initFieldBehaviors(fb)
   ]
