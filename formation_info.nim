@@ -17,6 +17,7 @@ type
     vertices: array[16, Vertex]
     units: seq[EVehicle]
     maxspeed: float
+    support: seq[FastSet[VehicleId]]
     associatedClusters: Table[int, PartInfo]
 
 proc updateFormationInfo*(self: Group, ws: WorldState, isAerial: bool): FormationInfo
@@ -27,13 +28,23 @@ from fastset import intersects, empty, `-`, FastSet, `*`
 from tables import `[]`, initTable, `[]=`
 from model.vehicle_type import VehicleType
 from gparams import flyers
+from math import floor
 
-proc getMaxSpeed(ws: WorldState, units: FastSet[VehicleId]): float =
+proc slowestCellUnderUnits(ws: WorldState, units: seq[EVehicle]): float =
   result = 1000
-  for t in VehicleType.ARRV..VehicleType.TANK:
-    if units.intersects(ws.vehicles.byType[t]):
-      let env = int(t.ord in flyers)
-      result = min(ws.gparams.speedByType[t.ord] * ws.gparams.speedFactorsByEnv[env][1+env], result)
+  for u in units:
+    let env = int(u.aerial)
+    let t = u.thetype
+    let celltype =
+      if u.aerial:
+        ws.world.weatherByCellXY[floor(u.x/32).int][floor(u.y/32).int].ord
+      else:
+        ws.world.terrainByCellXY[floor(u.x/32).int][floor(u.y/32).int].ord
+    let speed = ws.gparams.speedByType[t.ord] *
+                ws.gparams.speedFactorsByEnv[env][celltype]
+    if speed < result:
+      result = speed
+
 
 proc updateFormationInfo(self: Group, ws: WorldState, isAerial: bool): FormationInfo =
   result.group = self
@@ -41,12 +52,12 @@ proc updateFormationInfo(self: Group, ws: WorldState, isAerial: bool): Formation
   result.units = ws.vehicles.resolve(uset)
   if result.units.len() == 0:
     return
-  result.maxspeed = getMaxSpeed(ws, uset)
+  result.maxspeed = slowestCellUnderUnits(ws, result.units)
   result.center = obtainCenter(result.units)
   result.vertices = obtainBorders(result.center, result.units)
-  let clusters = 
-    if isAerial: ws.vehicles.byMyAerialCluster
-    else: ws.vehicles.byMyGroundCluster
+  let (clusters, remaincluster) =
+    if isAerial: (ws.vehicles.byMyAerialCluster, ws.vehicles.byMyGroundCluster)
+    else: (ws.vehicles.byMyGroundCluster, ws.vehicles.byMyAerialCluster)
   result.associatedClusters = initTable[int, PartInfo]()
   for i, c in clusters.pairs():
     if c.cluster.intersects(uset):
