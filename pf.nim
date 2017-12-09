@@ -105,10 +105,10 @@ template pointRepulsiveField(p, distractor: GridPoint): Intensity =
   else: Intensity(Intensity.high.float / (distance))
 template pointAttractiveField*(p, attractor: GridPoint): Intensity =
   let distance = float(sqr(p.x - attractor.x) + sqr(p.y-attractor.y))
-  #const maxdstln = (2*log10(2*sqr(maxsize).float))
-#  if distance == 0: Intensity.low
-#  else: Intensity(Intensity.high.float*log10(distance)/maxdstln)
-  Intensity(Intensity.high.float*distance/(4+distance))
+  const maxdstln = (2*log10(2*sqr(maxsize).float))
+  if distance == 0: Intensity.low
+  else: Intensity(Intensity.high.float*log10(distance)/maxdstln)
+  #Intensity(Intensity.high.float*distance/(6+distance))
 template repairField(p, rp: GridPoint): Intensity =
   let distance = sqr(p.x - rp.x) + sqr(p.y-rp.y)
   Intensity(Intensity.high.int*distance/(2*sqr(maxsize)))
