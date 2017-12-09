@@ -21,6 +21,7 @@ type
     cluster: FastSet[VehicleId]
     center: Point
     vertices: array[16, Vertex]
+    size: int
   Vehicles* = tuple
     updated: FastSet[VehicleId]
     mine: FastSet[VehicleId]
@@ -56,6 +57,7 @@ from lists import initDoublyLinkedList, DoublyLinkedList, append, remove, nodes
 from enhanced import fromVehicle, gridsize
 from clusterization import clusterize
 from borders import obtainCenter, obtainBorders
+from algorithm import sort
 #from sets import initSet, `*`, `+`, `-`, contains, items, card, init, incl, excl
 from fastset import `*`, `+`, `-`, contains, items, card, incl, excl, clear,
                     intersects, `+=`
@@ -181,7 +183,9 @@ proc update(self: var Vehicles, w: World, myid: int64) =
         let center = obtainCenter(units)
         let vertices = obtainBorders(center, units)
         self.byEnemyCluster[i] = (cluster: e, center: center,
-                                  vertices: vertices)
+                                  vertices: vertices, size: units.len)
+    self.byEnemyCluster.sort do (x, y: Cluster) -> int:
+      result = -cmp(x.size, y.size)
     let mineaerial = self.mine * self.aerials
     let mineground = self.mine - mineaerial
     if updateRequired or self.clusterUpdateRequired.intersects(mineground):
@@ -193,7 +197,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
         let center = obtainCenter(units)
         let vertices = obtainBorders(center, units)
         self.byMyGroundCluster[i] = (cluster: e, center: center,
-                                     vertices: vertices)
+                                     vertices: vertices, size: units.len)
     if updateRequired or self.clusterUpdateRequired.intersects(mineaerial):
       let mine = self.clusterize(mineaerial)
       debug("Detected " & $mine.len() & " my aerial clusterss")
@@ -203,7 +207,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
         let center = obtainCenter(units)
         let vertices = obtainBorders(center, units)
         self.byMyAerialCluster[i] = (cluster: e, center: center,
-                                     vertices: vertices)
+                                     vertices: vertices, size: units.len)
     self.clusterUpdateRequired.clear()
     updateRequired = false
 
