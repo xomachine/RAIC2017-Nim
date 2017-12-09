@@ -61,10 +61,9 @@ proc initNuke(): Behavior =
   result.action = proc (ws: WorldState, fi: FormationInfo, m: var Move) =
     if not stopped:
       debug("Stopping...")
-      m.action = ActionType.SCALE
-      m.x = fi.center.x
-      m.y = fi.center.y
-      m.factor = 1
+      m.action = ActionType.MOVE
+      m.x = 0.000001
+      m.y = 0.000001
       stopped = true
     elif target.x >= 0 and target.y >= 0:
       for u in fi.units:
