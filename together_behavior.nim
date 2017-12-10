@@ -32,7 +32,7 @@ proc initTogetherBehavior(holder: Group): Behavior =
   result.reset = reset
   result.tick = proc(ws: WorldState, finfo: FormationInfo): BehaviorStatus =
     const criticalDensity = 1/10
-    const criticalNukeDensity = 1/14
+    const criticalNukeDensity = 1/12
     if finfo.units.len() == 0:
       return BehaviorStatus.inactive
     let area = area(finfo.vertices)
@@ -44,6 +44,8 @@ proc initTogetherBehavior(holder: Group): Behavior =
             continue
           let distance = v.point.getSqDistance(finfo.center)
           if distance < ws.game.fighterVisionRange*ws.game.fighterVisionRange:
+            if spread:
+              return BehaviorStatus.hold
             reset()
             if density > criticalNukeDensity:
               spread = true
