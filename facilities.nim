@@ -31,7 +31,10 @@ proc genFacilityField(self: Facilities, myid: int64): FieldGrid =
   for f in self.byId.values:
     if f.ownerPlayerId != myid:
       let p = (x: f.left+30, y: f.top+30)
-      descs.add((point: p.gridFromPoint, power: -1.0))
+      if f.theType == FacilityType.VEHICLE_FACTORY:
+        descs.add((point: p.gridFromPoint, power: -1.0))
+      else:
+        descs.add((point: p.gridFromPoint, power: -0.8))
       #echo "Attraction point:", $p
       #result.applyField(attractionPoint(p))
       #var dummy: FieldGrid
