@@ -75,7 +75,7 @@ proc initEnemyField(): FieldBehavior =
       #  let distance = ea.center.getSqDistance(enemy.center)
       #  if distance < allySqRange and distance > 0:
       #    ensupport += mya.cluster.card()
-      let eff = ws.calculate(mine, enemy.cluster)+mysupport/10 + float(50 *
+      let eff = ws.calculate(mine, enemy.cluster)+mysupport/20 + float(50 *
         int(ws.players[Players.me].remainingNuclearStrikeCooldownTicks == 0))
       debug($fi.group & ":   " & $enemy.center &
             ": Calculatied effectiveness: " & $eff)
@@ -85,9 +85,9 @@ proc initEnemyField(): FieldBehavior =
     for i, enemy in v.byEnemyCluster.pairs():
       let eff = effs[i]
       if eff > 50:
-        f.applyAttackField(enemy.center, enemy.vertices, 1.5)
-      elif eff > 10:
         f.applyAttackField(enemy.center, enemy.vertices, 1.0)
+      elif eff > 10:
+        f.applyAttackField(enemy.center, enemy.vertices, 1.7)
       elif eff > 0:
         f.applyAttackField(enemy.center, enemy.vertices, 0.5)
       elif eff < -50:

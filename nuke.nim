@@ -51,7 +51,7 @@ proc initNuke(): Behavior =
      #       " units and sits " & $distance & " away")
         if distance < sqVision * 0.9 and distance > sqNukeRadius:
           target = center
-          if stopped or not v.updated.intersects(v.byGroup[fi.group]):
+          if stopped:
             stopped = true
             return BehaviorStatus.actUnselected
           else:
