@@ -44,13 +44,15 @@ proc initTogetherBehavior(holder: Group): Behavior =
             continue
           let distance = v.point.getSqDistance(finfo.center)
           if distance < ws.game.fighterVisionRange*ws.game.fighterVisionRange:
-            if spread:
-              return BehaviorStatus.hold
-            reset()
+            debug("Nuke alert near me, spreading!")
             if density > criticalNukeDensity:
+              if spread:
+                return BehaviorStatus.hold
+              reset()
               spread = true
               return BehaviorStatus.act
             else:
+              reset()
               return BehaviorStatus.inactive
     if density < criticaldensity:
       if lastAction != ActionType.SCALE or spread:
