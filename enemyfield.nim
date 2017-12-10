@@ -85,11 +85,11 @@ proc initEnemyField(): FieldBehavior =
     for i, enemy in v.byEnemyCluster.pairs():
       let eff = effs[i]
       if eff > 50:
-        f.applyAttackField(enemy.center, enemy.vertices, 1.0)
+        f.applyAttackField(enemy.center, enemy.vertices, 0.7)
       elif eff > 10:
-        f.applyAttackField(enemy.center, enemy.vertices, 1.7)
-      elif eff > 0:
         f.applyAttackField(enemy.center, enemy.vertices, 0.5)
+      elif eff > 0:
+        f.applyAttackField(enemy.center, enemy.vertices, 0.3)
       elif eff < -50:
         #f.applyRepulsiveFormationField(enemy.center, enemy.vertices)
         f.applyAttackField(enemy.center, enemy.vertices, -2.0)
