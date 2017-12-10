@@ -1,9 +1,11 @@
 from pbehavior import Action
 from enhanced import VehicleId
 from fastset import FastSet
+from analyze import Players
 
 proc wait*(ticks: Natural): Action
 proc atMoveEnd*(group: FastSet[VehicleId]): Action
+proc atNukeEnd*(player: Players): Action
 
 from model.move import Move
 from analyze import WorldState
@@ -29,5 +31,14 @@ proc atMoveEnd(group: FastSet[VehicleId]): Action =
     if amountUpdated > 0: ticks = 0
     else: ticks += 1
     if ticks > 1: PBResult(kind: PBRType.priority)
+    else: PBResult(kind: PBRType.empty)
+  return inner
+
+proc atNukeEnd(player: Players): Action =
+  proc inner(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult =
+    let p = ws.players[player]
+    #let cd = p.remaining_nuclear_strike_cooldown_ticks
+    let nt = p.nextNuclearStrikeTickIndex
+    if nt <= 0: PBResult(kind: PBRType.priority)
     else: PBResult(kind: PBRType.empty)
   return inner

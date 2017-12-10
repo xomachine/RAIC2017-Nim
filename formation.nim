@@ -44,7 +44,7 @@ proc newGroundFormation(sel: Group): Formation =
   ]
   result.behaviors = @[
     initNukeAlert(),
-    initNuke(),
+#    initNuke(),
     initTogetherBehavior(sel),
     initFieldBehaviors(fb)
   ]
@@ -60,7 +60,7 @@ proc newAerialFormation(sel: Group): Formation =
   ]
   result.behaviors = @[
     initNukeAlert(),
-    initNuke(),
+#    initNuke(),
     initRepairBh(),
     initTogetherBehavior(sel),
     initFieldBehaviors(fb)

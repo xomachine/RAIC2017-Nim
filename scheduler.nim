@@ -27,6 +27,7 @@ from groupcounter import initGroupCounter
 from enhanced import Group
 from pbehavior import PBRType
 from pbinitial import initInitial
+from pbnuke import initPBNuke
 from formation import empty
 from model.facility_type import FacilityType
 from model.vehicle_type import VehicleType
@@ -36,6 +37,7 @@ from tables import `[]`
 from utils import debug
 
 proc initScheduler(game: Game, ws: WorldState): Scheduler =
+  result.groupCounter = initGroupCounter(game.maxUnitGroup.Group)
   result.pool = initDoublyLinkedList[Formation]()
   result.playerBehaviors = initDoublyLinkedList[PlayerBehavior]()
   result.playerBehaviors.append(
@@ -44,7 +46,7 @@ proc initScheduler(game: Game, ws: WorldState): Scheduler =
   result.playerBehaviors.append(
     initInitial(@[VehicleType.FIGHTER, VehicleType.HELICOPTER],
                 ws.vehicles))
-  result.groupCounter = initGroupCounter(game.maxUnitGroup.Group)
+  result.playerBehaviors.append(initPBNuke(result.groupCounter))
 
 proc tick(self: var Scheduler, ws: WorldState, m: var Move) =
   if ws.players[Players.me].remainingActionCooldownTicks == 0:
