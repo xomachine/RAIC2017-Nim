@@ -10,7 +10,7 @@ from gparams import GParams
 from model.vehicle_type import VehicleType
 from pf import FieldGrid, applyRepulsiveFormationField, applyAttackField
 from tables import `[]`, values
-from utils import debug
+from utils import debug, getSqDistance
 
 proc calculate(ws: WorldState, mine, enemy: FastSet[VehicleId]): float =
   let v = ws.vehicles
@@ -25,7 +25,7 @@ proc calculate(ws: WorldState, mine, enemy: FastSet[VehicleId]): float =
   for t in VehicleType.ARRV..VehicleType.TANK:
     for i, hs in ws.vehicles.byHealth.pairs():
       let twithhs = v.byType[t] * hs
-      let relativeFactor = (i+1)/bhlen
+      let relativeFactor = 1+(i+1)/bhlen
       myByType[t.ord] += card(mine * twithhs).float * relativeFactor
       enemyByType[t.ord] += card(enemy * twithhs).float * relativeFactor
   #debug("MyArrvSupport: " & $myArrvSupport)
@@ -51,16 +51,31 @@ proc calculate(ws: WorldState, mine, enemy: FastSet[VehicleId]): float =
       result += adv
 
 proc initEnemyField(): FieldBehavior =
+  const allySqRange = 150*150
   result.apply = proc (f: var FieldGrid, ws: WorldState, fi: FormationInfo) =
     let v = ws.vehicles
-    var mine: FastSet[VehicleId] = v.byGroup[fi.group]
-    for c in fi.associatedClusters.values:
-      mine += c.cluster
+    let mine: FastSet[VehicleId] = v.byGroup[fi.group]
+    #for c in fi.associatedClusters.values:
+    #  mine += c.cluster
     debug($fi.group & ": Enemy has " & $v.byEnemyCluster.len() & " groups.")
     var effs = newSeq[float](v.byEnemyCluster.len)
     var maxeff = 0.0
     for i, enemy in v.byEnemyCluster.pairs():
-      let eff = ws.calculate(mine, enemy.cluster) + float(50 *
+      var mysupport = 0
+      for mya in v.byMyAerialCluster:
+        let distance = mya.center.getSqDistance(enemy.center)
+        if distance < allySqRange:
+          mysupport += mya.cluster.card()
+      for mya in v.byMyGroundCluster:
+        let distance = mya.center.getSqDistance(enemy.center)
+        if distance < allySqRange:
+          mysupport += mya.cluster.card()
+      #var ensupport = 0
+      #for ea in v.byEnemyCluster:
+      #  let distance = ea.center.getSqDistance(enemy.center)
+      #  if distance < allySqRange and distance > 0:
+      #    ensupport += mya.cluster.card()
+      let eff = ws.calculate(mine, enemy.cluster)+mysupport/10 + float(50 *
         int(ws.players[Players.me].remainingNuclearStrikeCooldownTicks == 0))
       debug($fi.group & ":   " & $enemy.center &
             ": Calculatied effectiveness: " & $eff)
@@ -70,7 +85,7 @@ proc initEnemyField(): FieldBehavior =
     for i, enemy in v.byEnemyCluster.pairs():
       let eff = effs[i]
       if eff > 50:
-        f.applyAttackField(enemy.center, enemy.vertices, 2.0)
+        f.applyAttackField(enemy.center, enemy.vertices, 1.5)
       elif eff > 10:
         f.applyAttackField(enemy.center, enemy.vertices, 1.0)
       elif eff > 0:
