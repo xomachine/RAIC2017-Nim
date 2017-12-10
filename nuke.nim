@@ -93,4 +93,5 @@ proc initNuke(): Behavior =
       #do_reset()
     else:
       debug("No target for me!")
+      do_reset()
   result.reset = do_reset
