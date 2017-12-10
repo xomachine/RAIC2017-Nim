@@ -5,6 +5,12 @@ from behavior import BehaviorStatus, Behavior
 from analyze import WorldState
 from enhanced import Group
 
+type LastAction {.pure.} = enum
+  none
+  tight
+  rotate
+  spread
+
 proc initTogetherBehavior*(holder: Group): Behavior
 
 from vehicles import resolve, toGroup
@@ -21,12 +27,12 @@ proc initTogetherBehavior(holder: Group): Behavior =
   # fields (perfecly incapsulated!)
   var holder = holder
   var lastAngle = PI
-  var lastAction: ActionType
+  var lastAction: LastAction
   var counter: int
   var spread = false
   # methods
   let reset = proc() =
-    lastAction = ActionType.NONE
+    lastAction = LastAction.none
     counter = 0
     spread = false
   result.reset = reset
@@ -55,7 +61,7 @@ proc initTogetherBehavior(holder: Group): Behavior =
               reset()
               return BehaviorStatus.inactive
     if density < criticaldensity:
-      if lastAction != ActionType.SCALE or spread:
+      if lastAction != LastAction.tight or spread:
         if counter <= 0:
           debug("Density: " & $density & ", critical: " & $criticaldensity)
           spread = false
@@ -71,16 +77,17 @@ proc initTogetherBehavior(holder: Group): Behavior =
       return BehaviorStatus.inactive
   result.action = proc(ws: WorldState, fi: FormationInfo, m: var Move) =
     const maxcount = 3
-    if lastAction != ActionType.SCALE or spread:
+    if lastAction != LastAction.tight or spread:
       let center = fi.center
       m.action = ActionType.SCALE
-      lastAction = ActionType.SCALE
       m.x = center.x
       m.y = center.y
       if spread:
         m.factor = 1.5
+        lastAction = LastAction.spread
       else:
         m.factor = 0.1
+        lastAction = LastAction.tight
       debug("Scaling:" & $m.factor)
     else:
       let center = fi.center
@@ -89,6 +96,6 @@ proc initTogetherBehavior(holder: Group): Behavior =
       m.x = center.x
       m.y = center.y
       lastAngle *= -1
-      lastAction = ActionType.ROTATE
+      lastAction = LastAction.rotate
       debug("Rotating:" & $lastAngle)
       counter = int(maxcount.float / fi.maxspeed)
