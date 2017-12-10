@@ -134,7 +134,7 @@ template attackField(p, enemy: GridPoint, eff: float): Intensity =
 #    Intensity(Intensity.high.float* (safedst.float + (distance.toFloat()*eff/2))/safedst.float)
 
 proc borderField(p: GridPoint): Intensity =
-  const cutoff = maxsize div 16
+  const cutoff = maxsize div 32
   let center = GridPoint(x: maxsize div 2, y: maxsize div 2)
   let relativeToCenter = GridPoint(x: p.x - center.x, y: p.y - center.y)
   let xcutoff = center.x - cutoff
