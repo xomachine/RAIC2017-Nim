@@ -57,7 +57,7 @@ proc initProduction(g: Game): PlayerBehavior =
         # initial setup production
         let mflen = card(mine_flyers)
         let mglen = card(mine_grounds)
-        if mflen - 100 < mglen and mglen > 100 and groundmakers > 0 and
+        if mflen + 200 < mglen and mglen > 100 and groundmakers > 0 and
            not in_facility.intersects(mine_flyers):
           m.vehicleType = VehicleType.HELICOPTER
         elif not in_facility.intersects(mine_grounds):
