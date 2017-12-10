@@ -17,7 +17,6 @@ type
     vertices: array[16, Vertex]
     units: seq[EVehicle]
     maxspeed: float
-    support: seq[FastSet[VehicleId]]
     associatedClusters: Table[int, PartInfo]
 
 proc updateFormationInfo*(self: Group, ws: WorldState, isAerial: bool): FormationInfo

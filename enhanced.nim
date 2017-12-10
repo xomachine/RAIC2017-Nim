@@ -15,6 +15,7 @@ type
     thetype: VehicleType
     durability: int32
     maxDurability: int32
+    aerial: bool
     x: float64
     y: float64
     gridx: int
@@ -27,6 +28,7 @@ proc fromVehicle*(v: Vehicle): EVehicle =
   result.thetype = v.thetype
   result.x = v.x
   result.y = v.y
+  result.aerial = v.aerial
   result.gridx = v.x.int div gridsize
   result.gridy = v.y.int div gridsize
   result.durability = v.durability
