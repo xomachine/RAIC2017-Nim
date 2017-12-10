@@ -35,7 +35,7 @@ proc formationVector*(self: FieldGrid, c: Point,
 proc applyAttackField*(self: var FieldGrid, center: Point,
                        vertices: array[16, Vertex], eff: float)
 proc applyRepulsiveFormationField*(self: var FieldGrid, center: Point,
-                                   vertices: array[16, Vertex])
+                                   vertices: array[16, Vertex], ground: bool)
 proc borderGrid(): FieldGrid
 let EdgeField* = borderGrid()
 proc `+`*(a, b: FieldGrid): FieldGrid
@@ -229,10 +229,10 @@ proc applyAttackField(self: var FieldGrid, center: Point,
   self.applyAttackFields(descriptors)
 
 proc applyRepulsiveFormationField(self: var FieldGrid, center: Point,
-                                  vertices: array[16, Vertex]) =
+                                  vertices: array[16, Vertex], ground: bool) =
   let centercell = center.gridFromPoint()
   var points = newSeq[PointField]()
-  points.add((point: centercell, power: 4.0))
+  points.add((point: centercell, power: 3.0 + 2*ground.float))
   var amount = 1
   for v in vertices:
     if v.distanceToCenter > 0:
@@ -244,7 +244,7 @@ proc applyRepulsiveFormationField(self: var FieldGrid, center: Point,
           uniq = false
           break
       if uniq:
-        points.add((point: cell, power: 2.0))
+        points.add((point: cell, power: 3.0 + ground.float))
         inc(amount)
   for d in points.mitems():
     d.power /= amount.float

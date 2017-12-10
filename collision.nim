@@ -19,9 +19,9 @@ proc initCollider(aerial: bool): FieldBehavior =
         let remaining = fi.associatedClusters[i]
         if remaining.units.len() > 0:
           f.applyRepulsiveFormationField(remaining.center,
-                                             remaining.vertices)
+                                         remaining.vertices, not aerial)
       else:
-        f.applyRepulsiveFormationField(c.center, c.vertices)
+        f.applyRepulsiveFormationField(c.center, c.vertices, not aerial)
       #var dummy: FieldGrid
       #dummy.applyRepulsiveFormationField(c.center,c.vertices)
       #echo "d", i, "=", $dummy.grid
