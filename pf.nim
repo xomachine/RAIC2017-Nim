@@ -119,12 +119,12 @@ template attackField(p, enemy: GridPoint, eff: float): Intensity =
   #const safeln = log10(safedst+1)/maxdstln
   #const safeln = safedstsq/(128+128*safedst+safedstsq)
   #const safeln = Intensity.high.int / 2
-  const safeln = safedst/(2*sqr(maxsize))
+  const safeln = safedst/(10*sqr(maxsize))
   let distance = float(sqr(p.x - enemy.x) + sqr(p.y-enemy.y))
   if eff >= 0:
     Intensity((Intensity.high.float*distance)/(1+4*eff*distance.sqrt+distance))
   elif distance >= safedstsq:
-    Intensity(Intensity.high.float*distance/(2*sqr(maxsize)))
+    Intensity(Intensity.high.float*distance/(10*sqr(maxsize)))
     #Intensity(Intensity.high.float*log10(distance+1)/maxdstln)
     #Intensity.high() div 2
     #Intensity((Intensity.high.float*distance)/(128+64*distance.sqrt+distance))
