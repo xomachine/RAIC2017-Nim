@@ -10,7 +10,7 @@ from actions import newSelection, group
 from actionchain import initActionChain
 from pbehavior import PBResult, PBRType
 from pbactions import addFormation
-from vehicles import inArea
+from vehicles import inArea, Vehicles
 from groupcounter import GroupCounter, getFreeGroup
 from enhanced import FacilityId
 from model.move import Move
@@ -19,7 +19,20 @@ from model.vehicle_type import VehicleType
 from model.facility_type import FacilityType
 from utils import Area, debug
 from tables import `[]`, initTable, contains, `[]=`
-from fastset import `*`, card, `-`, intersects, items
+from fastset import `*`, card, `-`, intersects, items, `+`
+
+proc getRecomendation(v: Vehicles, tick: int): bool =
+  var recomendation {.global.} = false
+  var cachetick {.global.} = -1
+  if tick != cachetick:
+    let enemies = v.all - v.mine
+    let forFighter = card((v.byType[VehicleType.FIGHTER] +
+                           v.byType[VehicleType.HELICOPTER]) * enemies)
+    let forCopter = card((v.byType[VehicleType.TANK] +
+                          v.byType[VehicleType.IFV]) * enemies)
+    recomendation = forCopter >= forFighter
+    cachetick = tick
+  recomendation
 
 proc initProduction(g: Game): PlayerBehavior =
   var flyermakers = 0
@@ -34,6 +47,7 @@ proc initProduction(g: Game): PlayerBehavior =
     let ungrouped = ws.vehicles.byGroup[0]
     let mine_factories =
       ws.facilities.mine * ws.facilities.byType[FacilityType.VEHICLE_FACTORY]
+    let v = ws.vehicles
     let mine_flyers = ws.vehicles.mine * ws.vehicles.aerials
     let mine_grounds = ws.vehicles.mine - ws.vehicles.aerials
     var tmpflyermakers = 0
@@ -59,9 +73,15 @@ proc initProduction(g: Game): PlayerBehavior =
         let mglen = card(mine_grounds)
         if mflen + 200 < mglen and mglen > 100 and groundmakers > 0 and
            not in_facility.intersects(mine_flyers):
-          m.vehicleType = VehicleType.HELICOPTER
+          if v.getRecomendation(ws.world.tickIndex):
+            m.vehicleType = VehicleType.HELICOPTER
+          else:
+            m.vehicleType = VehicleType.FIGHTER
         elif not in_facility.intersects(mine_grounds):
-          m.vehicleType = VehicleType.IFV
+          if v.getRecomendation(ws.world.tickIndex):
+            m.vehicleType = VehicleType.TANK
+          else:
+            m.vehicleType = VehicleType.IFV
         else: return
         m.action = ActionType.SETUP_VEHICLE_PRODUCTION
         m.facilityId = fid.int64
@@ -87,8 +107,12 @@ proc initProduction(g: Game): PlayerBehavior =
       elif (producted mod vehiclesPerLine) == 0 and producted > 0:
         # switch vehicles type
         case facility.vehicleType
-        of VehicleType.IFV: m.vehicleType = VehicleType.ARRV
-        of VehicleType.ARRV: m.vehicleType = VehicleType.IFV
+        of VehicleType.TANK, VehicleType.IFV: m.vehicleType = VehicleType.ARRV
+        of VehicleType.ARRV:
+          if v.getRecomendation(ws.world.tickIndex):
+            m.vehicleType = VehicleType.TANK
+          else:
+            m.vehicleType = VehicleType.IFV
         of VehicleType.FIGHTER: m.vehicleType = VehicleType.HELICOPTER
         of VehicleType.HELICOPTER: m.vehicleType = VehicleType.FIGHTER
         else: continue
