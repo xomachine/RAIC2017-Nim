@@ -36,9 +36,11 @@ proc initPBNuke(gc: var GroupCounter): PlayerBehavior =
     let sqVision = ws.game.fighterVisionRange * ws.game.fighterVisionRange
     debug("Vision: " & $sqVision)
     debug("NR: " & $sqNukeRadius)
-    for mc in v.byMyAerialCluster & v.byMyGroundCluster:
-      let vplusc = (distanceToCenter: 1.0, point: mc.center) & @(mc.vertices)
-      for ec in v.byEnemyCluster:
+    let allmine = v.byMyAerialCluster & v.byMyGroundCluster
+    for ec in v.byEnemyCluster:
+      debug("Checking enemy cluster of size: " &  $ec.size)
+      for mc in allmine:
+        let vplusc = (distanceToCenter: 1.0, point: mc.center) & @(mc.vertices)
         for vv in vplusc:
           if vv.distanceToCenter == 0:
             continue
@@ -46,14 +48,14 @@ proc initPBNuke(gc: var GroupCounter): PlayerBehavior =
           if distance > 4*vv.distanceToCenter*vv.distanceToCenter + sqVision:
             break
           debug("Distance to enemy cluster center: " & $distance)
-          if distance < sqVision * 0.9 and distance > sqNukeRadius:
+          if distance < sqVision and distance > sqNukeRadius:
             debug("Iterating over units")
             let dangerousArea = (left: ec.center.x - halfa,
                                  right: ec.center.x + halfa,
                                  top: ec.center.y - halfa,
                                  bottom: ec.center.y + halfa)
             let myUnderStrike = v.inArea(dangerousArea) * v.mine
-            if card(myUnderStrike) > 10:
+            if card(myUnderStrike) > 40:
               continue
             let units = v.resolve(mc.cluster)
             for u in units:
