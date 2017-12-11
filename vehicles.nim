@@ -172,7 +172,7 @@ proc update(self: var Vehicles, w: World, myid: int64) =
       if vu.groups.len() > 0: self.byGroup[0].excl(id)
       else: self.byGroup[0].incl(id)
   self.clusterUpdateRequired += self.updated
-  if w.tickIndex mod 10 == 0:
+  if w.tickIndex mod 5 == 0:
     let enemyset = self.all - self.mine
     if updateRequired or self.clusterUpdateRequired.intersects(enemyset):
       let enemies = self.clusterize(enemyset)
