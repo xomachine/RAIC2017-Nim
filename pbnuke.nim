@@ -55,7 +55,7 @@ proc initPBNuke(gc: var GroupCounter): PlayerBehavior =
                                  top: ec.center.y - halfa,
                                  bottom: ec.center.y + halfa)
             let myUnderStrike = v.inArea(dangerousArea) * v.mine
-            if card(myUnderStrike) > 40:
+            if card(myUnderStrike) > 20:
               continue
             let units = v.resolve(mc.cluster)
             for u in units:
