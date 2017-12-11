@@ -7,13 +7,14 @@ from analyze import WorldState, Players
 from actions import nuke, group, ungroup, newSelection, actMove
 from actionchain import initActionChain
 from condactions import atNukeEnd
+from fastset import `*`, card
 from enhanced import Group
 from groupcounter import getFreeGroup
 from gparams import flyers
 from model.move import Move
-from math import floor
+from math import floor, sqrt
 from pbehavior import PBResult, PBRType
-from vehicles import resolve
+from vehicles import resolve, inArea
 from utils import debug, getSqDistance, areaFromUnits
 
 proc initPBNuke(gc: var GroupCounter): PlayerBehavior =
@@ -30,6 +31,8 @@ proc initPBNuke(gc: var GroupCounter): PlayerBehavior =
     let v = ws.vehicles
     let sqNukeRadius = ws.game.tacticalNuclearStrikeRadius *
                        ws.game.tacticalNuclearStrikeRadius
+    const sqTwo = sqrt(2.0)
+    let halfa = ws.game.tacticalNuclearStrikeRadius * sqTwo
     let sqVision = ws.game.fighterVisionRange * ws.game.fighterVisionRange
     debug("Vision: " & $sqVision)
     debug("NR: " & $sqNukeRadius)
@@ -45,6 +48,13 @@ proc initPBNuke(gc: var GroupCounter): PlayerBehavior =
           debug("Distance to enemy cluster center: " & $distance)
           if distance < sqVision * 0.9 and distance > sqNukeRadius:
             debug("Iterating over units")
+            let dangerousArea = (left: ec.center.x - halfa,
+                                 right: ec.center.x + halfa,
+                                 top: ec.center.y - halfa,
+                                 bottom: ec.center.y + halfa)
+            let myUnderStrike = v.inArea(dangerousArea) * v.mine
+            if card(myUnderStrike) > 10:
+              continue
             let units = v.resolve(mc.cluster)
             for u in units:
               if u.durability == 0:
