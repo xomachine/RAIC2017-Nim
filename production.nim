@@ -18,7 +18,7 @@ from model.action_type import ActionType
 from model.vehicle_type import VehicleType
 from model.facility_type import FacilityType
 from utils import Area, debug
-from tables import `[]`, initTable, contains, `[]=`
+from tables import `[]`, initTable, contains, `[]=`, len
 from fastset import `*`, card, `-`, intersects, items, `+`
 
 proc getRecomendation(v: Vehicles, tick: int): bool =
@@ -50,6 +50,8 @@ proc initProduction(g: Game): PlayerBehavior =
     let v = ws.vehicles
     let mine_flyers = ws.vehicles.mine * ws.vehicles.aerials
     let mine_grounds = ws.vehicles.mine - ws.vehicles.aerials
+    let myfacilen = card(ws.facilities.mine)
+    let facilen = 3*ws.facilities.byId.len/4
     var tmpflyermakers = 0
     var tmpgroundmakers = 0
     for fid in mine_factories:
@@ -67,11 +69,13 @@ proc initProduction(g: Game): PlayerBehavior =
       #debug $fid & ": Making:" & $facility.vehicleType
       #if fid in lastchanged:
       #  debug $fid & ": LastChanged:" & $lastchanged[fid]
+      let productedmod = (producted-1) mod 22
       if facility.vehicleType == VehicleType.UNKNOWN:
         # initial setup production
         let mflen = card(mine_flyers)
         let mglen = card(mine_grounds)
         if mflen + 200 < mglen and mglen > 100 and groundmakers > 0 and
+           myfacilen.float > facilen and
            not in_facility.intersects(mine_flyers):
           if v.getRecomendation(ws.world.tickIndex):
             m.vehicleType = VehicleType.HELICOPTER
@@ -82,7 +86,7 @@ proc initProduction(g: Game): PlayerBehavior =
             m.vehicleType = VehicleType.TANK
           else:
             m.vehicleType = VehicleType.IFV
-        else: return
+        else: continue
         m.action = ActionType.SETUP_VEHICLE_PRODUCTION
         m.facilityId = fid.int64
         return
@@ -104,7 +108,9 @@ proc initProduction(g: Game): PlayerBehavior =
         lastchanged[fid] = producted
         return PBResult(kind: PBRType.addPBehavior,
                         behavior: initActionChain(ac))
-      elif (producted mod vehiclesPerLine) == 0 and producted > 0:
+      elif facility.vehicleType in
+           [VehicleType.FIGHTER, VehicleType.HELICOPTER] and
+           (producted mod vehiclesPerLine) == 0 and producted > 0:
         # switch vehicles type
         case facility.vehicleType
         of VehicleType.TANK, VehicleType.IFV: m.vehicleType = VehicleType.ARRV
@@ -113,13 +119,28 @@ proc initProduction(g: Game): PlayerBehavior =
             m.vehicleType = VehicleType.TANK
           else:
             m.vehicleType = VehicleType.IFV
-        of VehicleType.FIGHTER: m.vehicleType = VehicleType.HELICOPTER
-        of VehicleType.HELICOPTER: m.vehicleType = VehicleType.FIGHTER
+        of VehicleType.FIGHTER, VehicleType.HELICOPTER:
+          if v.getRecomendation(ws.world.tickIndex):
+            m.vehicleType = VehicleType.HELICOPTER
+          else:
+            m.vehicleType = VehicleType.FIGHTER
         else: continue
         m.action = ActionType.SETUP_VEHICLE_PRODUCTION
         m.facilityId = fid.int64
         lastchanged[fid] = producted
         return
+      elif producted > 0 and productedmod in [11, 20]:
+        case facility.vehicleType
+        of VehicleType.TANK, VehicleType.IFV: m.vehicleType = VehicleType.ARRV
+        of VehicleType.ARRV:
+          if v.getRecomendation(ws.world.tickIndex):
+            m.vehicleType = VehicleType.TANK
+          else:
+            m.vehicleType = VehicleType.IFV
+        else: continue
+        m.action = ActionType.SETUP_VEHICLE_PRODUCTION
+        m.facilityId = fid.int64
+        lastchanged[fid] = producted
       if ord(facility.vehicleType) in flyers:
         inc(tmpflyermakers)
       else:
