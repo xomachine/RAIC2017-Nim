@@ -4,10 +4,11 @@ from model.vehicle_type import VehicleType
 
 proc initInitial*(types: seq[VehicleType], v: Vehicles): PlayerBehavior
 
-from tables import `[]`
+from tables import `[]`, len
 from fastset import `*`, card, `+`, `-`, clear, FastSet, empty, `+=`, intersects
 from model.move import Move
-from actions import newSelection, actmove, group, ungroup, addToSelection
+from actions import newSelection, actmove, group, ungroup, addToSelection,
+                    rotate, deselect
 from actionchain import initActionChain, ActionChain
 from pbactions import addPBehavior, addFormation
 from analyze import WorldState
@@ -20,6 +21,7 @@ from pbehavior import PBResult, PBRType, Action
 from vehicles import resolve, toType, toArea, inArea, `*`
 from utils import Area, Point, areaFromUnits, debug
 from production import initProduction
+from math import PI
 
 const hi = 18.0
 const lo = 220.0
@@ -173,6 +175,9 @@ proc makeFormations(ws: WorldState, types: seq[VehicleType],
   # to avoid illegal capture of gc
   for i in 0..<types.len:
     groups[i] = gc.getFreeGroup()
+  let tlen =
+    if types.len == 3 and ws.facilities.byId.len > 2: 3
+    else: 1
   proc every(i: int, pa: Area): ActionChain =
     let ngroup = groups[i]
     result = newSeq[Action]()
@@ -186,8 +191,21 @@ proc makeFormations(ws: WorldState, types: seq[VehicleType],
     debug("NewFormation for group: " & $ngroup)
     debug("NewFormation for area: " & $pa)
     result.add(group(ngroup))
-    result.add(addFormation(ngroup, aerial))
-  var chain = devide(aarea, types.len, every)
+    if tlen > 1:
+      result.add(addFormation(ngroup, aerial))
+  var chain = devide(aarea, tlen, every)
+  if tlen == 1:
+    proc rotateit(i: int, pa: Area): ActionChain =
+      if i == 0:
+        return @[deselect(pa)]
+      elif i == 1:
+        let center = (x: pa.right, y: pa.top)
+        return @[
+          rotate(center, -PI),
+          atMoveEnd(uset),
+          addFormation(groups[0], aerial)
+        ]
+    chain &= devide(aarea, 2, rotateit)
   if not aerial:
     chain.add(addPBehavior(initProduction(ws.game)))
   result &= chain
