@@ -43,7 +43,7 @@ proc initTogetherBehavior(holder: Group): Behavior =
       return BehaviorStatus.inactive
     let area = area(finfo.vertices)
     let density = finfo.units.len().toFloat() / area
-    if ws.players[Players.enemy].remainingNuclearStrikeCooldownTicks == 0:
+    if ws.players[Players.enemy].remainingNuclearStrikeCooldownTicks < 15:
       for c in ws.vehicles.byEnemyCluster:
         for v in @(c.vertices) & (distanceToCenter: -1.0, point: c.center):
           if v.distanceToCenter == 0:

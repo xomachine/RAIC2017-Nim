@@ -58,8 +58,8 @@ proc initEnemyField(): FieldBehavior =
     #for c in fi.associatedClusters.values:
     #  mine += c.cluster
     debug($fi.group & ": Enemy has " & $v.byEnemyCluster.len() & " groups.")
-    var effs = newSeq[float](v.byEnemyCluster.len)
-    var maxeff = 0.0
+    #var effs = newSeq[float](v.byEnemyCluster.len)
+    #var maxeff = 0.0
     for i, enemy in v.byEnemyCluster.pairs():
       var mysupport = 0
       for mya in v.byMyAerialCluster:
@@ -75,23 +75,25 @@ proc initEnemyField(): FieldBehavior =
       #  let distance = ea.center.getSqDistance(enemy.center)
       #  if distance < allySqRange and distance > 0:
       #    ensupport += mya.cluster.card()
-      let eff = ws.calculate(mine, enemy.cluster)+mysupport/15
+      let eff = ws.calculate(mine, enemy.cluster)+mysupport/2
       debug($fi.group & ":   " & $enemy.center &
             ": Calculatied effectiveness: " & $eff)
-      effs[i] = eff
-      if abs(eff) > maxeff:
-        maxeff = abs(eff)
-    for i, enemy in v.byEnemyCluster.pairs():
-      let eff = effs[i]
+   #   effs[i] = eff
+   #   if abs(eff) > maxeff:
+   #     maxeff = abs(eff)
+   # for i, enemy in v.byEnemyCluster.pairs():
+   #   let eff = effs[i]
       #if ws.players[Players.me].remainingNuclearStrikeCooldownTicks == 0)
       if eff > 0:
-        f.applyAttackField(enemy.center, enemy.vertices, min(1.0, eff/20))
+        f.applyAttackField(enemy.center, enemy.vertices, min(1.0, eff/15))
       elif eff < -50:
         #f.applyRepulsiveFormationField(enemy.center, enemy.vertices)
-        f.applyAttackField(enemy.center, enemy.vertices, -2.0)
+        f.applyAttackField(enemy.center, enemy.vertices, -1.5)
       elif eff < -10:
         #f.applyRepulsiveFormationField(enemy.center, enemy.vertices)
-        f.applyAttackField(enemy.center, enemy.vertices, -1.0)
+        f.applyAttackField(enemy.center, enemy.vertices, -0.8)
+      elif eff == 0:
+        continue
       else:
         #f.applyRepulsiveFormationField(enemy.center, enemy.vertices)
-        f.applyAttackField(enemy.center, enemy.vertices, -0.5)
+        f.applyAttackField(enemy.center, enemy.vertices, -0.3)
