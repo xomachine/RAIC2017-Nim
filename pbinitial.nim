@@ -15,6 +15,7 @@ from analyze import WorldState
 from gparams import flyers
 from condactions import atMoveEnd
 from formation import newGroundFormation, newAerialFormation, Formation
+from model.facility_type import FacilityType
 from enhanced import VehicleId, Group
 from groupcounter import GroupCounter, getFreeGroup
 from pbehavior import PBResult, PBRType, Action
@@ -56,6 +57,23 @@ proc devide(a: Area, parts: Natural, every: proc(i: int, pa: Area): seq[Action])
     let top = a.top + step*i.float - 2
     let pa = (left: a.left, right: a.right, top: top, bottom: top+step)
     result &= every(i, pa)
+
+proc fastGroup(gc: var GroupCounter): ActionChain =
+  let fullarea = (left: 0.0, right: 1024.0, top: 0.0, bottom: 1024.0)
+  var groups: array[3, Group]
+  for i in 0..2:
+    groups[i] = gc.getFreeGroup()
+  @[
+    newSelection(fullarea, VehicleType.TANK),
+    group(groups[0]),
+    addFormation(groups[0], false),
+    newSelection(fullarea, VehicleType.IFV),
+    group(groups[1]),
+    addFormation(groups[1], false),
+    newSelection(fullarea, VehicleType.ARRV),
+    group(groups[2]),
+    addFormation(groups[2], false),
+  ]
 
 proc oneByLine(ws: WorldState, types: seq[VehicleType],
                colstarts: array[3, float]): seq[ActionChain] =
@@ -236,6 +254,14 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
     let v = ws.vehicles
     if ws.world.tickIndex == 0:
       # Placing squads one per column
+      #if types.len == 3 and
+      #   ws.facilities.byType[FacilityType.VEHICLE_FACTORY].card > 5:
+      #  let chain = fastGroup(gc)
+      #  actionChains.add(chain)
+      #  stagecounter = 3
+      #  return PBResult(kind: PBRType.addPBehavior,
+      #                  behavior: initProduction(ws.game))
+      #else:
       let actions = oneByLine(ws, types, colstarts)
       for a in actions:
         actionChains.add(a & done(0))
