@@ -75,7 +75,8 @@ proc initEnemyField(): FieldBehavior =
       #  let distance = ea.center.getSqDistance(enemy.center)
       #  if distance < allySqRange and distance > 0:
       #    ensupport += mya.cluster.card()
-      let eff = ws.calculate(mine, enemy.cluster)+mysupport/2
+      let ef = ws.calculate(mine, enemy.cluster)
+      let eff = if ef != 0: ef + mysupport/2 else: ef
       debug($fi.group & ":   " & $enemy.center &
             ": Calculatied effectiveness: " & $eff)
    #   effs[i] = eff
@@ -92,8 +93,6 @@ proc initEnemyField(): FieldBehavior =
       elif eff < -10:
         #f.applyRepulsiveFormationField(enemy.center, enemy.vertices)
         f.applyAttackField(enemy.center, enemy.vertices, -0.8)
-      elif eff == 0:
-        continue
       else:
         #f.applyRepulsiveFormationField(enemy.center, enemy.vertices)
         f.applyAttackField(enemy.center, enemy.vertices, -0.3)
