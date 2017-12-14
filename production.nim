@@ -38,6 +38,7 @@ proc initProduction(g: Game): PlayerBehavior =
   var flyermakers = 0
   var groundmakers = 0
   var lastchanged = initTable[FacilityId, int]()
+  var tickcheck: array[16, int]
   let vehiclesPerLine = (g.facilityWidth.int div g.vehicleRadius.int + 1) div 3
   let vehiclesPerCol = (g.facilityHeight.int div g.vehicleRadius.int + 1) div 3
   let vehiclesPerFactory = ((vehiclesPerCol div 2)+2) * vehiclesPerLine
@@ -61,7 +62,8 @@ proc initProduction(g: Game): PlayerBehavior =
                          top: facility.top,
                          bottom: facility.top + ws.game.facilityHeight)
       let in_facility = ws.vehicles.inArea(farea)
-      let producted = card(in_facility * ungrouped)
+      let productedset = in_facility * ungrouped
+      let producted = card(productedset)
       #debug "FAREA:", $farea
       #debug "In facility total:", $card(in_facility)
       #debug $mine_in_facility
@@ -70,18 +72,19 @@ proc initProduction(g: Game): PlayerBehavior =
       #if fid in lastchanged:
       #  debug $fid & ": LastChanged:" & $lastchanged[fid]
       let productedmod = (producted-1) mod 22
-      if facility.vehicleType == VehicleType.UNKNOWN:
+      if tickcheck[fid] < ws.world.tickIndex and
+         facility.vehicleType == VehicleType.UNKNOWN:
         # initial setup production
         let mflen = card(mine_flyers)
         let mglen = card(mine_grounds)
         if mflen + 200 < mglen and mglen > 100 and groundmakers > 0 and
            myfacilen.float > facilen and
-           not in_facility.intersects(mine_flyers):
+           not in_facility.intersects(mine_flyers - productedset):
           if v.getRecomendation(ws.world.tickIndex):
             m.vehicleType = VehicleType.HELICOPTER
           else:
             m.vehicleType = VehicleType.FIGHTER
-        elif not in_facility.intersects(mine_grounds):
+        elif not in_facility.intersects(mine_grounds - productedset):
           if v.getRecomendation(ws.world.tickIndex):
             m.vehicleType = VehicleType.TANK
           else:
@@ -106,6 +109,7 @@ proc initProduction(g: Game): PlayerBehavior =
         ]
         debug("Adding behavior for group: " & $newgroup)
         lastchanged[fid] = producted
+        tickcheck[fid] = ws.world.tickIndex + 10
         return PBResult(kind: PBRType.addPBehavior,
                         behavior: initActionChain(ac))
       elif facility.vehicleType in
@@ -129,10 +133,12 @@ proc initProduction(g: Game): PlayerBehavior =
         m.facilityId = fid.int64
         lastchanged[fid] = producted
         return
-      elif producted > 0 and productedmod in [11, 20]:
-        case facility.vehicleType
-        of VehicleType.TANK, VehicleType.IFV: m.vehicleType = VehicleType.ARRV
-        of VehicleType.ARRV:
+      elif facility.vehicleType notin
+           [VehicleType.FIGHTER, VehicleType.HELICOPTER] and
+           productedmod in [11, 20]:
+        case productedmod
+        of 11: m.vehicleType = VehicleType.ARRV
+        of 20:
           if v.getRecomendation(ws.world.tickIndex):
             m.vehicleType = VehicleType.TANK
           else:
