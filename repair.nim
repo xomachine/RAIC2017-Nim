@@ -18,11 +18,11 @@ proc initRepair(): FieldBehavior =
     let v = ws.vehicles
     let damaged = v.byGroup[fi.group] - v.byHealth[maxHealthRange]
     debug("FH: " & $card(v.byHealth[maxHealthRange]))
-    if damaged.empty:
+    if damaged.empty and not empty(v.all - v.mine):
       return
     let arrvs = v.clusterize(v.byType[VehicleType.ARRV] * v.mine)
     var healPoints = newSeq[PointField](arrvs.len)
-    let damagedlen = card(damaged)
+    let damagedlen = card(damaged) + 1
     let fulllen = fi.units.len()
     debug($fi.group & ": " & $damagedlen & " of " & $fulllen &
           " damaged units detected!")
