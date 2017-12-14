@@ -97,11 +97,14 @@ proc applyVector(m: var Move, v: Vector) =
 
 template pointRepulsiveField(p, distractor: GridPoint): Intensity =
   let distance = (sqr(p.x - distractor.x) + sqr(p.y-distractor.y)).float.sqrt
-  const safedst = 96/16
-  const safeln = 1/(safedst+1)
+  const safedst = 96 div 16
+  const safeln = Intensity.high.int / (safedst)
   if distance < 0: Intensity.high
-    #Intensity(min(1,(cos(sqrt(distance)/safedst*PI)+1)/2*(1-safeln)+
-    #          safeln) * Intensity.high.float)
+  #if distance < safedst:
+  #  Intensity(((cos(sqrt(distance)/safedst*PI/2)+1)/2*(1-safeln)+
+  #             safeln) * Intensity.high.float)
+    #Intensity((cos(distance/safedst*PI)+1)/2*Intensity.high.float)
+  #else: 0.Intensity
   else: Intensity(Intensity.high.float / (distance))
 template pointAttractiveField*(p, attractor: GridPoint): Intensity =
   let distance = float(sqr(p.x - attractor.x) + sqr(p.y-attractor.y))
