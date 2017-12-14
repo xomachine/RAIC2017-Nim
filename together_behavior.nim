@@ -28,12 +28,12 @@ proc initTogetherBehavior(holder: Group): Behavior =
   var holder = holder
   var lastAngle = PI
   var lastAction: LastAction
-  var counter: int
+  var counter: int = 20000
   var spread = false
   # methods
   let reset = proc() =
     lastAction = LastAction.none
-    counter = 0
+    counter = 20000
     spread = false
   result.reset = reset
   result.tick = proc(ws: WorldState, finfo: FormationInfo): BehaviorStatus =
@@ -43,7 +43,7 @@ proc initTogetherBehavior(holder: Group): Behavior =
       return BehaviorStatus.inactive
     let area = area(finfo.vertices)
     let density = finfo.units.len().toFloat() / area
-    if ws.players[Players.enemy].remainingNuclearStrikeCooldownTicks < 15:
+    if ws.players[Players.enemy].remainingNuclearStrikeCooldownTicks < 20:
       for c in ws.vehicles.byEnemyCluster:
         for v in @(c.vertices) & (distanceToCenter: -1.0, point: c.center):
           if v.distanceToCenter == 0:
@@ -59,15 +59,15 @@ proc initTogetherBehavior(holder: Group): Behavior =
               return BehaviorStatus.act
             else:
               reset()
+              spread = true
               return BehaviorStatus.inactive
     if density < criticaldensity:
       if lastAction != LastAction.tight or spread:
-        if counter <= 0:
+        if counter >= ws.world.tickIndex:
           debug("Density: " & $density & ", critical: " & $criticaldensity)
           spread = false
           return BehaviorStatus.act
         else:
-          counter -= 1
           return BehaviorStatus.hold
       elif not ws.vehicles.updated.intersects(ws.vehicles.byGroup[holder]):
         return BehaviorStatus.act
@@ -76,7 +76,7 @@ proc initTogetherBehavior(holder: Group): Behavior =
       reset()
       return BehaviorStatus.inactive
   result.action = proc(ws: WorldState, fi: FormationInfo, m: var Move) =
-    const maxcount = 3
+    const maxcount = 8
     if lastAction != LastAction.tight or spread:
       let center = fi.center
       m.action = ActionType.SCALE
@@ -98,4 +98,4 @@ proc initTogetherBehavior(holder: Group): Behavior =
       lastAngle *= -1
       lastAction = LastAction.rotate
       debug("Rotating:" & $lastAngle)
-      counter = int(maxcount.float / fi.maxspeed)
+      counter = ws.world.tickIndex + int(maxcount.float / fi.maxspeed)
