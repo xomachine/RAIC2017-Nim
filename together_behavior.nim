@@ -28,17 +28,17 @@ proc initTogetherBehavior(holder: Group): Behavior =
   var holder = holder
   var lastAngle = PI
   var lastAction: LastAction
-  var counter: int = 20000
+  var counter: int
   var spread = false
   # methods
   let reset = proc() =
     lastAction = LastAction.none
-    counter = 20000
+    counter = 0
     spread = false
   result.reset = reset
   result.tick = proc(ws: WorldState, finfo: FormationInfo): BehaviorStatus =
     const criticalDensity = 1/10
-    const criticalNukeDensity = 1/12
+    const criticalNukeDensity = 1/14
     if finfo.units.len() == 0:
       return BehaviorStatus.inactive
     let area = area(finfo.vertices)
@@ -63,11 +63,12 @@ proc initTogetherBehavior(holder: Group): Behavior =
               return BehaviorStatus.inactive
     if density < criticaldensity:
       if lastAction != LastAction.tight or spread:
-        if counter >= ws.world.tickIndex:
-          debug("Density: " & $density & ", critical: " & $criticaldensity)
+        if counter <= ws.world.tickIndex:
+          debug($finfo.group & ": Density: " & $density & ", critical: " & $criticaldensity)
           spread = false
           return BehaviorStatus.act
         else:
+          debug($finfo.group & ": Rotation continued till " & $counter & " but now " & $ws.world.tickIndex)
           return BehaviorStatus.hold
       elif not ws.vehicles.updated.intersects(ws.vehicles.byGroup[holder]):
         return BehaviorStatus.act
@@ -76,7 +77,7 @@ proc initTogetherBehavior(holder: Group): Behavior =
       reset()
       return BehaviorStatus.inactive
   result.action = proc(ws: WorldState, fi: FormationInfo, m: var Move) =
-    const maxcount = 8
+    const maxcount = 6
     if lastAction != LastAction.tight or spread:
       let center = fi.center
       m.action = ActionType.SCALE
