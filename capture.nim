@@ -4,15 +4,22 @@ proc initCapture*(): FieldBehavior
 
 from analyze import WorldState, Players
 from formation_info import FormationInfo
-from fastset import `-`, items, `*`, card
+from fastset import `-`, items, `*`, card, FastSet, incl, clear
+from enhanced import FacilityId
 from pf import FieldGrid, applyFields, gridFromPoint, PointField
 from tables import `[]`
 from model.facility_type import FacilityType
 from vehicles import inArea, resolve
 from utils import getSqDistance, Point
 
+var excludes: FastSet[FacilityId]
+var cachetick = 0
+
 proc initCapture(): FieldBehavior =
   result.apply = proc(f: var FieldGrid, ws: WorldState, fi: FormationInfo) =
+    if ws.world.tickIndex != cachetick:
+      cachetick = ws.world.tickIndex
+      excludes.clear
     let enemyid = ws.players[Players.enemy].id
     f = ws.facilities.field
     let notmine = ws.facilities.all - ws.facilities.mine
@@ -21,6 +28,7 @@ proc initCapture(): FieldBehavior =
     var nearest: Point
     var mindst: float = 1024*1024*2
     var additionals = newSeq[PointField]()
+    var nearestid: FacilityId
     for f in notmine:
       let facility = ws.facilities.byId[f]
       let fapoint = (x: facility.left+32.0, y: facility.top+32.0)
@@ -37,6 +45,8 @@ proc initCapture(): FieldBehavior =
       if distance < mindst:
         mindst = distance
         nearest = fapoint
+        nearestid = f
     if nearest.x > 0:
-      additionals.add((point: nearest.gridFromPoint, power: -1.0))
+      excludes.incl(nearestid)
+      additionals.add((point: nearest.gridFromPoint, power: -2.0))
     f.applyFields(additionals)

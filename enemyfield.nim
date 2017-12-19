@@ -1,5 +1,11 @@
 from fieldbehavior import FieldBehavior
 
+
+type
+  Advantage = tuple
+    negative: float
+    positive: float
+
 proc initEnemyField*(): FieldBehavior
 
 from analyze import WorldState, Players
@@ -12,13 +18,13 @@ from pf import FieldGrid, applyRepulsiveFormationField, applyAttackField
 from tables import `[]`, values
 from utils import debug, getSqDistance
 
-proc calculate(ws: WorldState, mine, enemy: FastSet[VehicleId]): float =
+proc calculate(ws: WorldState, mine, enemy: FastSet[VehicleId]): Advantage =
   let v = ws.vehicles
   if mine.empty or enemy.empty:
     let my = card(mine)
     let en = card(enemy)
     debug("My: " & $my & ", enemy: " & $en)
-    return my.float - en.float
+    return (negative: en.float, positive: my.float)
   var enemyByType: array[5, float]
   var myByType: array[5, float]
   const bhlen = v.byHealth.len
@@ -41,14 +47,15 @@ proc calculate(ws: WorldState, mine, enemy: FastSet[VehicleId]): float =
       let myArrvSupport = (1+0.5*myByType[0]/my)
       let enemyArrvSupport = (1+0.5*enemyByType[0]/en)
       #let sum = en + my
-      let adv = my * ws.gparams.effectiveness[t.ord][et.ord] *
-                  myArrvSupport -
-                en * ws.gparams.effectiveness[et.ord][t.ord] *
-                  enemyArrvSupport
+      let pos = my * ws.gparams.effectiveness[t.ord][et.ord] *
+                myArrvSupport
+      let neg = en * ws.gparams.effectiveness[et.ord][t.ord] *
+                enemyArrvSupport
       debug("My " & $myByType[t.ord] & " of " & $t & " vs enemys " &
             $enemyByType[et.ord] & " of " & $et & " has advantage: " &
-            $(adv))
-      result += adv
+            $(pos- neg))
+      result.positive += pos
+      result.negative += neg
 
 proc initEnemyField(): FieldBehavior =
   const allySqRange = 150*150
@@ -61,24 +68,32 @@ proc initEnemyField(): FieldBehavior =
     #var effs = newSeq[float](v.byEnemyCluster.len)
     #var maxeff = 0.0
     for i, enemy in v.byEnemyCluster.pairs():
-      var mysupport = 0
+      var mysupport: FastSet[VehicleId]
       for mya in v.byMyAerialCluster:
         let distance = mya.center.getSqDistance(enemy.center)
         if distance < allySqRange:
-          mysupport += mya.cluster.card()
+          mysupport += mya.cluster
       for mya in v.byMyGroundCluster:
         let distance = mya.center.getSqDistance(enemy.center)
         if distance < allySqRange:
-          mysupport += mya.cluster.card()
+          mysupport += mya.cluster
       #var ensupport = 0
       #for ea in v.byEnemyCluster:
       #  let distance = ea.center.getSqDistance(enemy.center)
       #  if distance < allySqRange and distance > 0:
       #    ensupport += mya.cluster.card()
-      let ef = ws.calculate(mine, enemy.cluster)
-      let eff = if ef != 0: ef + mysupport/2 else: ef
+      let adv = ws.calculate(mine, enemy.cluster)
       debug($fi.group & ":   " & $enemy.center &
-            ": Calculatied effectiveness: " & $eff)
+            ": Calculatied effectiveness: " & $adv)
+      let eff =
+        if adv.positive > 0 and not mysupport.empty:
+          (block:
+            let sadv = ws.calculate(mysupport, enemy.cluster)
+            debug($fi.group & ":   " & $enemy.center &
+                  ": Calculatied support effectiveness: " & $sadv)
+            sadv.positive + adv.positive - adv.negative)
+        else:
+          adv.positive - adv.negative
    #   effs[i] = eff
    #   if abs(eff) > maxeff:
    #     maxeff = abs(eff)
