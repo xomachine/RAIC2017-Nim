@@ -112,7 +112,7 @@ proc oneByLine(ws: WorldState, types: seq[VehicleType],
       for l in 0'u8..2:
         if perline[l].intersects(realtoshift):
           debug("Shifting squad on line " & $l)
-          shiftline = l
+          shiftline = l.int
           break
       debug("In first col detected: " & $percol[1].card)
       debug("In target line detected: " & $perline[shiftline].card)

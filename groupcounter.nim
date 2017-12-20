@@ -8,7 +8,7 @@ proc getFreeGroup*(self: var GroupCounter): Group
 proc releaseGroup*(self: var GroupCounter, group: Group) {.inline.}
 
 proc initGroupCounter(maxGroup: Group): GroupCounter =
-  for i in 1..maxGroup:
+  for i in 1.Group..maxGroup:
     result.incl(i)
 
 proc releaseGroup(self: var GroupCounter, group: Group) =
