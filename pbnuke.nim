@@ -37,7 +37,7 @@ proc initPBNuke(gc: var GroupCounter): PlayerBehavior =
     debug("Vision: " & $sqVision)
     debug("NR: " & $sqNukeRadius)
     let allmine = v.byMyAerialCluster & v.byMyGroundCluster
-    for ec in v.byEnemyCluster:
+    for enumber, ec in v.byEnemyCluster.pairs:
       debug("Checking enemy cluster of size: " &  $ec.size)
       for mc in allmine:
         let vplusc = (distanceToCenter: 1.0, point: mc.center) & @(mc.vertices)
@@ -48,7 +48,8 @@ proc initPBNuke(gc: var GroupCounter): PlayerBehavior =
           if distance > 4*vv.distanceToCenter*vv.distanceToCenter + sqVision:
             break
           debug("Distance to enemy cluster center: " & $distance)
-          if distance < sqVision and distance > sqNukeRadius:
+          if distance < sqVision and distance > sqNukeRadius and
+             (ec.size / mc.size > 0.2 or enumber == 0):
             debug("Iterating over units")
             let dangerousArea = (left: ec.center.x - halfa,
                                  right: ec.center.x + halfa,
