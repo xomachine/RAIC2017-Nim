@@ -248,8 +248,8 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
     let v = ws.vehicles
     if ws.world.tickIndex == 0:
       # Placing squads one per column
-      if false:# types.len == 2:# and
-        # ws.facilities.byType[FacilityType.VEHICLE_FACTORY].card > 5:
+      if types.len == 3 and
+         ws.facilities.byType[FacilityType.VEHICLE_FACTORY].card > 5:
         let chain = fastGroup(gc, types)
         actionChains.add(chain)
         stagecounter = 3
