@@ -111,7 +111,7 @@ template pointAttractiveField*(p, attractor: GridPoint): Intensity =
   #const maxdstln = (2*log10(2*sqr(maxsize).float))
   #if distance == 0: Intensity.low
   #else: Intensity(Intensity.high.float*log10(distance)/maxdstln)
-  Intensity(Intensity.high.float*distance/(1+distance+1*distance.sqrt))
+  Intensity(Intensity.high.float*distance/(1+distance+2*distance.sqrt))
 template repairField(p, rp: GridPoint): Intensity =
   let distance = sqr(p.x - rp.x) + sqr(p.y-rp.y)
   Intensity(Intensity.high.int*distance/(2*sqr(maxsize)))
@@ -228,14 +228,14 @@ proc applyAttackField(self: var FieldGrid, center: Point,
     d.power *= 1/amount
   if maxdstid > 0:
     let cell = vertices[maxdstid].point.gridFromPoint()
-    descriptors.add((point: cell, power: 0.5))
+    descriptors.add((point: cell, power: 1.0))
   self.applyAttackFields(descriptors)
 
 proc applyRepulsiveFormationField(self: var FieldGrid, center: Point,
                                   vertices: array[16, Vertex], ground: bool) =
   let centercell = center.gridFromPoint()
   var points = newSeq[PointField]()
-  points.add((point: centercell, power: 2.0 + ground.float))
+  points.add((point: centercell, power: 1.0 + 2*ground.float))
   var amount = 1
   for v in vertices:
     if v.distanceToCenter > 0:
@@ -247,7 +247,7 @@ proc applyRepulsiveFormationField(self: var FieldGrid, center: Point,
           uniq = false
           break
       if uniq:
-        points.add((point: cell, power: 2.0 + ground.float))
+        points.add((point: cell, power: 1.0 + 2*ground.float))
         inc(amount)
   for d in points.mitems():
     d.power /= amount.float
