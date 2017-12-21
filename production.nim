@@ -51,8 +51,8 @@ proc initProduction(g: Game): PlayerBehavior =
     let v = ws.vehicles
     let mine_flyers = ws.vehicles.mine * ws.vehicles.aerials
     let mine_grounds = ws.vehicles.mine - ws.vehicles.aerials
-    let myfacilen = card(ws.facilities.mine)
-    let facilen = 3*ws.facilities.byId.len/4
+    let myfacilen = card(mine_factories)
+    let facilen = card(ws.facilities.byType[FacilityType.VEHICLE_FACTORY]) div 2
     var tmpflyermakers = 0
     var tmpgroundmakers = 0
     for fid in mine_factories:
@@ -77,8 +77,8 @@ proc initProduction(g: Game): PlayerBehavior =
         # initial setup production
         let mflen = card(mine_flyers)
         let mglen = card(mine_grounds)
-        if mflen + 200 < mglen and mglen > 100 and groundmakers > 0 and
-           myfacilen.float > facilen and
+        if mflen + 200 < mglen and mglen > 100 and groundmakers > 1 and
+           myfacilen > facilen and
            not in_facility.intersects(mine_flyers - productedset):
           if v.getRecomendation(ws.world.tickIndex):
             m.vehicleType = VehicleType.HELICOPTER
@@ -96,7 +96,10 @@ proc initProduction(g: Game): PlayerBehavior =
       elif fid in lastchanged and lastchanged[fid] == producted:
         # not so elegant but helps to avoid doubling this condition
         discard
-      elif producted >= vehiclesPerFactory:
+      elif producted >= vehiclesPerFactory or
+           (facility.vehicleType in
+            [VehicleType.FIGHTER, VehicleType.HELICOPTER] and
+            producted >= (vehiclesPerFactory div 2) + 5):
         # make formation setup flyers production
         m.action = ActionType.SETUP_VEHICLE_PRODUCTION
         m.facilityId = fid.int64
