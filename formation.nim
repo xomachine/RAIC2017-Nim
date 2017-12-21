@@ -33,6 +33,8 @@ from fieldbehavior import initFieldBehaviors, resetField
 from collision import initCollider
 from enemyfield import initEnemyField
 from repair import initRepair, initRepairBh
+from rotator import initRotator
+from merger import initMerger
 
 proc newGroundFormation(sel: Group): Formation =
   result.selection = sel
@@ -45,7 +47,9 @@ proc newGroundFormation(sel: Group): Formation =
   result.behaviors = @[
     initNukeAlert(),
 #    initNuke(),
+    initMerger(false),
     initTogetherBehavior(sel),
+    initRotator(),
     initFieldBehaviors(fb)
   ]
 proc newAerialFormation(sel: Group): Formation =
@@ -62,7 +66,9 @@ proc newAerialFormation(sel: Group): Formation =
     initNukeAlert(),
 #    initNuke(),
     initRepairBh(),
+    initMerger(true),
     initTogetherBehavior(sel),
+    initRotator(),
     initFieldBehaviors(fb)
   ]
 
@@ -85,6 +91,7 @@ proc tick(self: var Formation, ws: WorldState, m: var Move) =
       b.reset()
       continue
     let state = b.tick(ws, finfo)
+    debug($finfo.group & ": Behavior " & $i & " returned " & $state)
     case state
     of BehaviorStatus.hold:
       resetFlag = true
@@ -96,4 +103,5 @@ proc tick(self: var Formation, ws: WorldState, m: var Move) =
       resetFlag = true
     of BehaviorStatus.actUnselected:
       b.action(ws, finfo, m)
+      resetFlag = true
     else: discard
