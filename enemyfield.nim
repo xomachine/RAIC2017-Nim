@@ -101,7 +101,8 @@ proc initEnemyField(): FieldBehavior =
    #   let eff = effs[i]
       #if ws.players[Players.me].remainingNuclearStrikeCooldownTicks == 0)
       if eff > 0:
-        f.applyAttackField(enemy.center, enemy.vertices, min(1.0, eff/15))
+        f.applyAttackField(enemy.center, enemy.vertices,
+                           min(1.5, 10*eff/fi.units.len.float))
       elif eff < -50:
         #f.applyRepulsiveFormationField(enemy.center, enemy.vertices)
         f.applyAttackField(enemy.center, enemy.vertices, -1.5)
