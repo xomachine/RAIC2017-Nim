@@ -30,7 +30,7 @@ proc genFacilityField(self: Facilities, myid: int64): FieldGrid =
   var descs = newSeqOfCap[PointField](self.byId.len)
   for f in self.byId.values:
     if f.ownerPlayerId != myid:
-      let p = (x: f.left+30, y: f.top+30)
+      let p = (x: f.left+32, y: f.top+32)
       if f.theType == FacilityType.VEHICLE_FACTORY:
         descs.add((point: p.gridFromPoint, power: -1.0))
       else:
