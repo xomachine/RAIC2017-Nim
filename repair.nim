@@ -59,7 +59,7 @@ proc initRepairBh*(): Behavior =
     if damaged.empty:
       doreset()
       return BehaviorStatus.inactive
-    elif damaged.card/fi.units.len > 0.9:
+    elif damaged.card/fi.units.len > 0.8:
       let arrvs = v.clusterize(v.byType[VehicleType.ARRV] * v.mine)
       #let damagedlen = card(damaged)
       #let fulllen = fi.units.len()
