@@ -38,7 +38,7 @@ proc initProduction(g: Game): PlayerBehavior =
   var flyermakers = 0
   var groundmakers = 0
   var lastchanged = initTable[FacilityId, int]()
-  var tickcheck: array[16, int]
+  var tickcheck: array[32, int]
   let vehiclesPerLine = (g.facilityWidth.int div g.vehicleRadius.int + 1) div 3
   let vehiclesPerCol = (g.facilityHeight.int div g.vehicleRadius.int + 1) div 3
   let vehiclesPerFactory = ((vehiclesPerCol div 2)+2) * vehiclesPerLine
