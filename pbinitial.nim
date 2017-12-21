@@ -58,7 +58,8 @@ proc devide(a: Area, parts: Natural, every: proc(i: int, pa: Area): seq[Action])
     let pa = (left: a.left, right: a.right, top: top, bottom: top+step)
     result &= every(i, pa)
 
-proc fastGroup(gc: var GroupCounter, types: seq[VehicleType]): ActionChain =
+proc fastGroup(gc: var GroupCounter, types: seq[VehicleType],
+               aerial: bool): ActionChain =
   let fullarea = (left: 0.0, right: 1024.0, top: 0.0, bottom: 1024.0)
   result = newSeq[Action]()
   for t in types:
@@ -66,7 +67,7 @@ proc fastGroup(gc: var GroupCounter, types: seq[VehicleType]): ActionChain =
     result &= @[
       newSelection(fullarea, t),
       group(group),
-      addFormation(group, types.len == 2),
+      addFormation(group, aerial),
     ]
 
 proc oneByLine(ws: WorldState, types: seq[VehicleType],
@@ -116,7 +117,7 @@ proc oneByLine(ws: WorldState, types: seq[VehicleType],
           break
       debug("In first col detected: " & $percol[1].card)
       debug("In target line detected: " & $perline[shiftline].card)
-      let obstacle = percol[1] * perline[shiftline]
+      let obstacle = percol[1]# * perline[shiftline]
       if not obstacle.empty:
         debug("Obstacle detected")
         let obstaclearea = areaFromUnits(v.resolve(obstacle))
@@ -188,7 +189,7 @@ proc makeFormations(ws: WorldState, types: seq[VehicleType],
   for i in 0..<types.len:
     groups[i] = gc.getFreeGroup()
   let tlen =
-    if types.len == 3 and ws.facilities.byId.len > 2: 3
+    if not aerial and ws.facilities.byId.len > 2: types.len
     else: 1
   proc every(i: int, pa: Area): ActionChain =
     let ngroup = groups[i]
@@ -227,6 +228,7 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
   var actionChains = newSeq[ActionChain]()
   var stages: array[10, tuple[expected: int, done: int]]
   var stagecounter = 0
+  let aerial = types.len == 2
   let squad = areaFromUnits(v.resolve(spawnArea * VehicleType.IFV))
   let squadWidth = squad.right - squad.left
   let colstarts = [hi, (hi + lo - squadWidth)/2, lo - squadWidth]
@@ -244,15 +246,16 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
       stages[stage].done += 1
       PBResult(kind: PBRType.priority)
     return inn
-  result.tick = proc(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult=
+  proc tick(ws: WorldState, gc: var GroupCounter, m: var Move): PBResult=
     let v = ws.vehicles
     if ws.world.tickIndex == 0:
       # Placing squads one per column
-      if types.len == 3 and
+      if not aerial and
          ws.facilities.byType[FacilityType.VEHICLE_FACTORY].card > 5:
-        let chain = fastGroup(gc, types)
+        let chain = fastGroup(gc, types, false)
         actionChains.add(chain)
         stagecounter = 3
+        #types = @[VehicleType.TANK, VehicleType.ARRV]
         return PBResult(kind: PBRType.addPBehavior,
                         behavior: initProduction(ws.game))
       else:
@@ -286,3 +289,4 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
     if actionChains.len() > 0:
       return PBResult(kind: PBRType.addPBehavior,
                       behavior: initActionChain(actionChains.pop()))
+  result.tick = tick
