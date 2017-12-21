@@ -29,17 +29,18 @@ proc initTogetherBehavior(holder: Group): Behavior =
   var lastAngle = PI
   var lastAction: LastAction
   var counter: int
-  var spread = false
+  var factor: float = 1.0
   # methods
   let reset = proc() =
     lastAction = LastAction.none
     counter = 0
-    spread = false
+    factor = 1.0
   result.reset = reset
   result.tick = proc(ws: WorldState, finfo: FormationInfo): BehaviorStatus =
-    const criticalDensity = 1/10
+    const criticalDensity = 1/12
+    const maxDensity = 1/9
     const criticalNukeDensity = 1/14
-    if finfo.units.len() == 0:
+    if finfo.units.len() < 4:
       return BehaviorStatus.inactive
     let area = area(finfo.vertices)
     let density = finfo.units.len().toFloat() / area
@@ -52,42 +53,56 @@ proc initTogetherBehavior(holder: Group): Behavior =
           if distance < ws.game.fighterVisionRange*ws.game.fighterVisionRange:
             debug("Nuke alert near me, spreading!")
             if density > criticalNukeDensity:
-              if spread:
+              if lastAction == LastAction.spread:
                 return BehaviorStatus.hold
               reset()
-              spread = true
+              factor = density / criticalNukeDensity
               return BehaviorStatus.act
             else:
               reset()
-              spread = true
               return BehaviorStatus.inactive
-    if density < criticaldensity:
-      if lastAction != LastAction.tight or spread:
-        if counter <= ws.world.tickIndex:
+    if density > maxDensity:
+      factor = density / maxDensity
+      if lastAction == LastAction.spread and
+         not ws.vehicles.updated.intersects(ws.vehicles.byGroup[holder]):
+        debug("Holding due to still spreading")
+        return BehaviorStatus.hold
+      else:
+        return BehaviorStatus.act
+    elif density < criticaldensity:
+      factor = density / criticalDensity
+      if lastAction != LastAction.tight:
+        if lastAction != LastAction.rotate or counter <= ws.world.tickIndex:
           debug($finfo.group & ": Density: " & $density & ", critical: " & $criticaldensity)
-          spread = false
           return BehaviorStatus.act
         else:
           debug($finfo.group & ": Rotation continued till " & $counter & " but now " & $ws.world.tickIndex)
           return BehaviorStatus.hold
       elif not ws.vehicles.updated.intersects(ws.vehicles.byGroup[holder]):
+        factor = 1.0
         return BehaviorStatus.act
-      return BehaviorStatus.hold
+      elif lastAction == LastAction.rotate:
+        debug("Holding due to no condition meet (rotation continues)")
+        return BehaviorStatus.hold
+      else:
+        reset()
+        return BehaviorStatus.inactive
     else:
       reset()
       return BehaviorStatus.inactive
   result.action = proc(ws: WorldState, fi: FormationInfo, m: var Move) =
     const maxcount = 6
-    if lastAction != LastAction.tight or spread:
+    if (lastAction != LastAction.tight and factor < 1.0) or
+       (lastAction != LastAction.spread and factor > 1.0):
       let center = fi.center
       m.action = ActionType.SCALE
       m.x = center.x
       m.y = center.y
-      if spread:
-        m.factor = 1.5
+      if factor > 1.0:
+        m.factor = min(10.0, factor)
         lastAction = LastAction.spread
       else:
-        m.factor = 0.1
+        m.factor = max(0.1, factor)
         lastAction = LastAction.tight
       debug("Scaling:" & $m.factor)
     else:
