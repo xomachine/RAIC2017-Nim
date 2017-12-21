@@ -111,7 +111,7 @@ template pointAttractiveField*(p, attractor: GridPoint): Intensity =
   #const maxdstln = (2*log10(2*sqr(maxsize).float))
   #if distance == 0: Intensity.low
   #else: Intensity(Intensity.high.float*log10(distance)/maxdstln)
-  Intensity(Intensity.high.float*distance/(1+distance+2*distance.sqrt))
+  Intensity(Intensity.high.float*distance/(1+distance+1*distance.sqrt))
 template repairField(p, rp: GridPoint): Intensity =
   let distance = sqr(p.x - rp.x) + sqr(p.y-rp.y)
   Intensity(Intensity.high.int*distance/(2*sqr(maxsize)))
