@@ -204,10 +204,10 @@ proc makeFormations(ws: WorldState, types: seq[VehicleType],
     debug("NewFormation for group: " & $ngroup)
     debug("NewFormation for area: " & $pa)
     result.add(group(ngroup))
-    if tlen > 1:
+    if true:#tlen > 1:
       result.add(addFormation(ngroup, aerial))
   var chain = devide(aarea, tlen, every)
-  if tlen == 1:
+  if false:#tlen == 1:
     proc rotateit(i: int, pa: Area): ActionChain =
       if i == 0:
         return @[deselect(pa)]
