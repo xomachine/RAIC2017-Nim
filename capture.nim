@@ -4,7 +4,7 @@ proc initCapture*(): FieldBehavior
 
 from analyze import WorldState, Players
 from formation_info import FormationInfo
-from fastset import `-`, items, `*`, card, FastSet, incl, clear
+from fastset import `-`, items, `*`, card, FastSet, incl, clear, contains
 from enhanced import FacilityId
 from pf import FieldGrid, applyFields, gridFromPoint, PointField
 from tables import `[]`
@@ -38,15 +38,15 @@ proc initCapture(): FieldBehavior =
       if fi.units.len <= enemies_in_farea +
          int(facility.ownerPlayerId == enemyid and
              facility.theType == FacilityType.VEHICLE_FACTORY)*20:
-        additionals.add((point: fapoint.gridFromPoint(), power: 3.0))
+        additionals.add((point: fapoint.gridFromPoint(), power: 4.0))
         continue
       let distance =
         fi.center.getSqDistance(fapoint)
-      if distance < mindst:
+      if distance < mindst and f notin excludes:
         mindst = distance
         nearest = fapoint
         nearestid = f
     if nearest.x > 0:
       excludes.incl(nearestid)
-      additionals.add((point: nearest.gridFromPoint, power: -2.0))
+      additionals.add((point: nearest.gridFromPoint, power: -1.0))
     f.applyFields(additionals)
