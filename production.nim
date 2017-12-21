@@ -78,7 +78,7 @@ proc initProduction(g: Game): PlayerBehavior =
         let mflen = card(mine_flyers)
         let mglen = card(mine_grounds)
         if mflen + 200 < mglen and mglen > 100 and groundmakers > 1 and
-           myfacilen > facilen and
+           myfacilen >= facilen and
            not in_facility.intersects(mine_flyers - productedset):
           if v.getRecomendation(ws.world.tickIndex):
             m.vehicleType = VehicleType.HELICOPTER
