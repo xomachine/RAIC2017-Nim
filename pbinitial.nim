@@ -250,8 +250,8 @@ proc initInitial(types: seq[VehicleType], v: Vehicles): PlayerBehavior =
     let v = ws.vehicles
     if ws.world.tickIndex == 0:
       # Placing squads one per column
-      if not aerial and
-         ws.facilities.byType[FacilityType.VEHICLE_FACTORY].card > 5:
+      if false:# not aerial and
+        # ws.facilities.byType[FacilityType.VEHICLE_FACTORY].card > 5:
         let chain = fastGroup(gc, types, false)
         actionChains.add(chain)
         stagecounter = 3
