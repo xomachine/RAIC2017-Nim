@@ -32,6 +32,7 @@ proc initRotator(): Behavior =
   var torotate: float
   var nexttick = 0
   var radius: float = 0
+  const rotrange = 120
   result.reset = proc() =
     rotating = 0
     torotate = 0.0
@@ -47,18 +48,20 @@ proc initRotator(): Behavior =
       nexttick = ws.world.tickIndex + 20
     else:
       return BehaviorStatus.inactive
+    if fi.units.len() < 20:
+      return BehaviorStatus.inactive
     if empty(ws.vehicles.byGroup[fi.group] -
              ws.vehicles.byType[VehicleType.ARRV]):
       nexttick = 20000
       return BehaviorStatus.inactive
-    var mindst: float = 2*100*100
+    var mindst: float = 2*rotrange*rotrange
     var mincenter: Point
     for c in ws.vehicles.byEnemyCluster:
       let distance = c.center.getSqDistance(fi.center)
       if distance < mindst:
         mindst = distance
         mincenter = c.center
-    if mindst == 2*100*100:
+    if mindst == 2*rotrange*rotrange:
       return BehaviorStatus.inactive
     let cangle = normalize(arctan2(mincenter.y - fi.center.y,
                                    mincenter.x - fi.center.x))
@@ -71,7 +74,7 @@ proc initRotator(): Behavior =
         maxrad = vtx.distanceToCenter
         maxvert = vtx.point
     mean /= 16
-    if maxrad <= 0 or maxrad/mean < 3.5:
+    if maxrad <= 0 or maxrad/mean < 3.0:
       return BehaviorStatus.inactive
     debug($fi.group & ": Mean: " & $mean & ", max: " & $maxrad)
     let fangle = normalize(arctan2(maxvert.y - fi.center.y,
