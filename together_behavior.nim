@@ -94,6 +94,8 @@ proc initTogetherBehavior(holder: Group): Behavior =
     const maxcount = 6
     if (lastAction != LastAction.tight and factor < 1.0) or
        (lastAction != LastAction.spread and factor > 1.0):
+      while abs(factor - 1.0) < 0.2:
+        factor *= factor
       let center = fi.center
       m.action = ActionType.SCALE
       m.x = center.x
