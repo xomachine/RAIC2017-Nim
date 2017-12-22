@@ -32,7 +32,7 @@ proc initRotator(): Behavior =
   var torotate: float
   var nexttick = 0
   var radius: float = 0
-  const rotrange = 120
+  const rotrange = 140
   result.reset = proc() =
     rotating = 0
     torotate = 0.0
@@ -52,7 +52,7 @@ proc initRotator(): Behavior =
       return BehaviorStatus.inactive
     if empty(ws.vehicles.byGroup[fi.group] -
              ws.vehicles.byType[VehicleType.ARRV]):
-      nexttick = 20000
+      nexttick = ws.world.tickIndex + 200
       return BehaviorStatus.inactive
     var mindst: float = 2*rotrange*rotrange
     var mincenter: Point
@@ -74,7 +74,7 @@ proc initRotator(): Behavior =
         maxrad = vtx.distanceToCenter
         maxvert = vtx.point
     mean /= 16
-    if maxrad <= 0 or maxrad/mean < 3.0:
+    if maxrad <= 0 or maxrad/mean < 2.5:
       return BehaviorStatus.inactive
     debug($fi.group & ": Mean: " & $mean & ", max: " & $maxrad)
     let fangle = normalize(arctan2(maxvert.y - fi.center.y,
